@@ -46,6 +46,10 @@ jobs:
       - name: Spring Boot Build
         run: ./gradlew clean build -x test
 
+      - name: Test SSH Connection
+        run: ssh -v -o StrictHostKeyChecking=no -i /home/runner/.ssh/github_actions_key ec2-user@${{ secrets.EC2_HOST }} "echo 'SSH Connected!'"
+
+
       # 4 EC2 서버로 배포 
       - name: Deploy to EC2
         uses: appleboy/scp-action@master
