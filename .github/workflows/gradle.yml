@@ -45,6 +45,16 @@ jobs:
       # Spring Boot Build
       - name: Spring Boot Build
         run: ./gradlew clean build -x test
+
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/github_actions_key
+          chmod 600 ~/.ssh/github_actions_key
+          eval $(ssh-agent -s)  # Start the SSH agent
+          ssh-add ~/.ssh/github_actions_key  # Add the private key to the agent
+          ssh-keyscan -t rsa ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
         
       - name: Add private key to SSH agent
         run: |
