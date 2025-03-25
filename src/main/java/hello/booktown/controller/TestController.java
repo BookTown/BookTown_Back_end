@@ -22,7 +22,7 @@ public class TestController {
     })
     @GetMapping("/test")
     public ResponseEntity<String> testEndpoint(HttpServletRequest request, HttpServletResponse response) {
-        System.out.println("테스트");
+        System.out.println("테스트.");
 
         return new ResponseEntity<>("OK", HttpStatus.OK);
     }
