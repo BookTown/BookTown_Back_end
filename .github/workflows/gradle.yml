@@ -45,46 +45,24 @@ jobs:
       # Spring Boot Build
       - name: Spring Boot Build
         run: ./gradlew clean build -x test
-        
-      - name: Add private key to SSH agent
-        run: |
-              mkdir -p ~/.ssh
-              echo "${{ secrets.EC2_KEY }}" > ~/.ssh/github_actions_key
-              chmod 600 ~/.ssh/github_actions_key
-              ssh-add ~/.ssh/github_actions_key
 
-
-      # Add private key to SSH agent
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/github_actions_key
-          chmod 600 ~/.ssh/github_actions_key
-          eval $(ssh-agent -s)  # Start the SSH agent
-          ssh-add ~/.ssh/github_actions_key  # Add the private key to the agent
-          ssh-keyscan -t rsa ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Test SSH Connection
-        run: ssh -v -o StrictHostKeyChecking=no -i /home/runner/.ssh/github_actions_key ec2-user@${{ secrets.EC2_HOST }} "echo 'SSH Connected!'"
-
-
-      # 4 EC2 서버로 배포 
       - name: Deploy to EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
+          port : ${{ secrets.EC2_PORT }}
           source: "build/libs/*.jar"
           target: "/home/ec2-user/app"
 
-      # 5 EC2에서 Spring Boot 실행
+      # 6 EC2에서 Spring Boot 실행
       - name: Restart Backend on EC2
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
+          host: ${{secrets.EC2_HOST}}
+          username: ${{secrets.EC2_USER}}
+          key: ${{secrets.EC2_KEY}}
           script: |
             # 실행 중인 Spring Boot 종료
             sudo fuser -k 8080/tcp || true
