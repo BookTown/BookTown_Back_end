@@ -30,4 +30,9 @@ public class UserService {
         return userRepository.findByUsername(username)
                 .filter(user -> passwordEncoder.matches(password, user.getPassword()));
     }
+
+    public void deleteByUsername(String username) {
+        userRepository.findByUsername(username)
+                .ifPresent(userRepository::delete);
+    }
 }
