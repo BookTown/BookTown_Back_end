@@ -80,5 +80,5 @@ jobs:
             
             # 새 컨테이너 실행
             docker run -d --name booktown-backend -p 8080:8080 \
-              -e SPRING_PROFILES_ACTIVE=prod \
+              --env-file /home/ubuntu/booktown-backend/.env \
               ${{ secrets.DOCKER_NAME }}/booktown-backend:latest
