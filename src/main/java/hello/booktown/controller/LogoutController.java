@@ -1,6 +1,7 @@
 package hello.booktown.controller;
 
 import hello.booktown.jwt.JwtTokenProvider;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,7 @@ public class LogoutController {
         this.redisTemplate = redisTemplate;
     }
 
+    @Operation(summary = "로그아웃", description = "Redis에 토큰을 블랙리스트 등록하여 로그아웃 처리합니다.")
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request) {
         String token = jwtTokenProvider.resolveToken(request);
