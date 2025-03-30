@@ -80,5 +80,5 @@ jobs:
             
             # 새 컨테이너 실행
             docker run -d --name booktown-backend -p 8080:8080 \
-              --env-file /home/ubuntu/booktown-backend/.env \
+              --env-file /home/ec2-user/.env \
               ${{ secrets.DOCKER_NAME }}/booktown-backend:latest
