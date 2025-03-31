@@ -19,11 +19,18 @@ public class JwtTokenProvider {
     @Value("${jwt.expiration}")
     private long expirationTime;
 
+    @Value("${jwt.refresh-expiration}")
+    private long refreshExpirationTime;
+
     private Key key;
 
     @PostConstruct
     public void init() {
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes());
+    }
+
+    public long getRefreshTokenRemainingMillis(String token) {
+        return getExpiration(token);
     }
 
     public String generateToken(String username) {
@@ -73,4 +80,15 @@ public class JwtTokenProvider {
                 .getExpiration()
                 .getTime() - System.currentTimeMillis();
     }
+
+    public String generateRefreshToken(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + refreshExpirationTime)) // 예: 7일
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+
 }
