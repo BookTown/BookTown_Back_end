@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: prod
+    active: local
 
   jpa:
     properties:
@@ -31,4 +31,4 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
   expiration: 3600000
-
+  refresh-expiration: 604800000

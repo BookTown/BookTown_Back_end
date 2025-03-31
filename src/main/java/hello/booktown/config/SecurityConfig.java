@@ -2,11 +2,13 @@ package hello.booktown.config;
 
 import hello.booktown.jwt.JwtAuthenticationFilter;
 import hello.booktown.oauth.CustomOAuth2UserService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -37,6 +39,9 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(unauthorizedHandler()) // 👈 추가
+                )
                 .oauth2Login(oauth -> oauth
                         .defaultSuccessUrl("/login/success", true)
                         .userInfoEndpoint(userInfo -> userInfo
@@ -46,6 +51,16 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    // 👇 인증 실패 시 JSON 응답 주는 핸들러
+    @Bean
+    public AuthenticationEntryPoint unauthorizedHandler() {
+        return (request, response, authException) -> {
+            response.setContentType("application/json;charset=UTF-8");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("{ \"error\": \"인증이 필요합니다.\" }");
+        };
     }
 
     @Bean

@@ -42,16 +42,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
 
-            if (jwtTokenProvider.validateToken(token) &&
-                    !Boolean.TRUE.equals(redisTemplate.hasKey(token))) {
+            if (jwtTokenProvider.validateToken(token)) {
+                String isBlacklisted = redisTemplate.opsForValue().get(token);
+                // 블랙리스트 등록된 토큰이라면 필터 진행 X
+                if (!"logout".equals(isBlacklisted)) {
+                    String username = jwtTokenProvider.getUsernameFromToken(token);
 
-                String username = jwtTokenProvider.getUsernameFromToken(token);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
         }
 

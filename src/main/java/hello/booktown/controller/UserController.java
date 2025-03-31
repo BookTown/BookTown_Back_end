@@ -2,16 +2,21 @@ package hello.booktown.controller;
 
 import hello.booktown.dto.UserLoginRequest;
 import hello.booktown.jwt.JwtTokenProvider;
+import hello.booktown.service.RefreshTokenService;
 import hello.booktown.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.data.redis.core.StringRedisTemplate;
+
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Tag(name = "User API", description = "회원가입 / 로그인 / 회원정보 관련 API")
@@ -22,13 +27,16 @@ public class UserController {
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final StringRedisTemplate redisTemplate;
+    private final RefreshTokenService refreshTokenService;
 
-    public UserController(UserService userService, JwtTokenProvider jwtTokenProvider, StringRedisTemplate redisTemplate) {
+    public UserController(UserService userService, JwtTokenProvider jwtTokenProvider,
+                          StringRedisTemplate redisTemplate,
+                          RefreshTokenService refreshTokenService) {
         this.userService = userService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.redisTemplate = redisTemplate;
+        this.refreshTokenService = refreshTokenService;
     }
-
 
     @Operation(summary = "회원가입", description = "사용자 정보를 받아 회원가입을 수행합니다.")
     @ApiResponse(responseCode = "200", description = "회원가입 성공")
@@ -44,13 +52,32 @@ public class UserController {
             @ApiResponse(responseCode = "401", description = "아이디 또는 비밀번호 오류")
     })
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody UserLoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody UserLoginRequest request, HttpServletResponse response) {
         return userService.login(request.getUsername(), request.getPassword())
                 .map(user -> {
-                    String token = jwtTokenProvider.generateToken(user.getUsername());
-                    return ResponseEntity.ok().body(token);
+                    String accessToken = jwtTokenProvider.generateToken(user.getUsername());
+                    String refreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
+
+                    refreshTokenService.saveRefreshToken(
+                            user.getUsername(),
+                            refreshToken,
+                            jwtTokenProvider.getRefreshTokenRemainingMillis(refreshToken)
+                    );
+
+                    // HttpOnly 쿠키 설정
+                    Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
+                    refreshCookie.setHttpOnly(true);
+                    refreshCookie.setPath("/");
+                    refreshCookie.setMaxAge(7 * 24 * 60 * 60);
+                    response.addCookie(refreshCookie);
+
+                    return ResponseEntity.ok(Map.of(
+                            "grantType", "Bearer",
+                            "accessToken", accessToken,
+                            "refreshToken", "httpOnly"
+                    ));
                 })
-                .orElseGet(() -> ResponseEntity.status(401).body("아이디 또는 비밀번호가 틀렸습니다."));
+                .orElseGet(() -> ResponseEntity.status(401).body(Map.of("error", "아이디 또는 비밀번호가 틀렸습니다.")));
     }
 
     @Operation(summary = "내 정보 확인", description = "현재 로그인한 사용자의 정보를 확인합니다.")
@@ -69,6 +96,8 @@ public class UserController {
             long expiration = jwtTokenProvider.getExpiration(token);
             redisTemplate.opsForValue().set(token, "logout", expiration, TimeUnit.MILLISECONDS);
         }
+
+        refreshTokenService.deleteRefreshToken(username);
 
         return ResponseEntity.ok("회원 탈퇴 및 로그아웃 완료");
     }
