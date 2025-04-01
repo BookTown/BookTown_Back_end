@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -28,18 +29,70 @@ public class SocialLoginController {
     @GetMapping("/login/success")
     public void loginSuccess(@AuthenticationPrincipal OAuth2User oAuth2User,
                              HttpServletResponse response) throws IOException {
-        String email = oAuth2User.getAttribute("email");
+        Map<String, Object> attributes = oAuth2User.getAttributes();
+        String provider = oAuth2User.getAttribute("provider"); // 커스텀 필드 처리 안 되어 있으면 추출 불가
 
-        // 사용자 정보 DB에 존재하는지 확인 후 없으면 저장
-        Optional<User> existingUser = userRepository.findByUsername(email);
+        // provider 추출 (대체 방법)
+        String providerName = oAuth2User.getAuthorities().toString().toLowerCase().contains("google") ? "google" :
+                oAuth2User.getAttributes().containsKey("kakao_account") ? "kakao" :
+                        oAuth2User.getAttributes().containsKey("response") ? "naver" : "unknown";
+
+        String providerId = extractProviderId(providerName, attributes);
+        String email = extractEmail(providerName, attributes);
+
+        Optional<User> existingUser = userRepository.findByProviderAndProviderId(providerName, providerId);
+
         if (existingUser.isEmpty()) {
-            User newUser = new User(email, "SOCIAL_LOGIN");
+            String nickname = extractNickname(providerName, attributes);
+            String profileImage = extractProfileImage(providerName, attributes);
+            User newUser = new User(email, providerName, providerId, nickname, profileImage);
             userRepository.save(newUser);
         }
 
         String token = jwtTokenProvider.generateToken(email);
 
-        // 테스트용 출력 (리디렉션용 아님)
         response.getWriter().write("JWT: " + token);
+    }
+
+    private String extractProviderId(String provider, Map<String, Object> attributes) {
+        switch (provider) {
+            case "google": return (String) attributes.get("sub");
+            case "kakao": return String.valueOf(attributes.get("id"));
+            case "naver": return ((Map<String, Object>) attributes.get("response")).get("id").toString();
+            default: return null;
+        }
+    }
+
+    private String extractEmail(String provider, Map<String, Object> attributes) {
+        switch (provider) {
+            case "google": return (String) attributes.get("email");
+            case "kakao": return (String) ((Map<String, Object>) attributes.get("kakao_account")).get("email");
+            case "naver": return (String) ((Map<String, Object>) attributes.get("response")).get("email");
+            default: return null;
+        }
+    }
+
+    private String extractNickname(String provider, Map<String, Object> attributes) {
+        switch (provider) {
+            case "google": return (String) attributes.get("name");
+            case "kakao":
+                Map<String, Object> kakaoProfile = (Map<String, Object>) ((Map<String, Object>) attributes.get("kakao_account")).get("profile");
+                return (String) kakaoProfile.get("nickname");
+            case "naver":
+                return (String) ((Map<String, Object>) attributes.get("response")).get("nickname");
+            default: return null;
+        }
+    }
+
+    private String extractProfileImage(String provider, Map<String, Object> attributes) {
+        switch (provider) {
+            case "google": return (String) attributes.get("picture");
+            case "kakao":
+                Map<String, Object> kakaoProfile = (Map<String, Object>) ((Map<String, Object>) attributes.get("kakao_account")).get("profile");
+                return (String) kakaoProfile.get("profile_image_url");
+            case "naver":
+                return (String) ((Map<String, Object>) attributes.get("response")).get("profile_image");
+            default: return null;
+        }
     }
 }
