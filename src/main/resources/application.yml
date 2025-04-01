@@ -12,7 +12,6 @@ spring:
     redis:
       timeout: 10000
 
-
   security:
     oauth2:
       client:
@@ -39,6 +38,14 @@ spring:
         auto : false
       region:
         static : ${S3_REGION}
+
+  ai:
+    openai:
+      api-key: ${OPENAI_KEY}
+    chat:
+      options:
+        model: gpt-4o-mini
+
 
 jwt:
   secret: ${JWT_SECRET}
