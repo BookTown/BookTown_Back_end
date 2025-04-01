@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController
+@RestController("/test")
 @RequiredArgsConstructor
 @Tag(name = "TestController", description = "Test endpoint for verifying deployment")
 public class TestController {
@@ -20,7 +20,7 @@ public class TestController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "성공적으로 처리됨")
     })
-    @GetMapping("/test")
+    @GetMapping("/qwe")
     public ResponseEntity<String> testEndpoint(HttpServletRequest request, HttpServletResponse response) {
         System.out.println("테스트!!");
 

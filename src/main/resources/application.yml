@@ -12,7 +12,6 @@ spring:
     redis:
       timeout: 10000
 
-
   security:
     oauth2:
       client:
@@ -27,6 +26,26 @@ spring:
         provider:
           google:
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+
+  cloud:
+    aws:
+      s3:
+        bucket: ${S3_BUCKET_NAME}
+      credentials:
+        access-key: ${S3_ACCESS_KEY}
+        secret-key: ${S3_SECRET_KEY}
+      stack:
+        auto : false
+      region:
+        static : ${S3_REGION}
+
+  ai:
+    openai:
+      api-key: ${OPENAI_KEY}
+    chat:
+      options:
+        model: gpt-4o-mini
+
 
 jwt:
   secret: ${JWT_SECRET}
