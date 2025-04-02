@@ -7,7 +7,6 @@ import hello.booktown.repository.UserRepository;
 import hello.booktown.service.RefreshTokenService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -16,9 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Tag(name = "User API", description = "소셜 로그인, 사용자 정보, 로그아웃/회원탈퇴 API")
@@ -43,20 +40,26 @@ public class UserController {
 
     @Operation(summary = "내 정보 확인", description = "현재 로그인한 사용자의 정보를 확인합니다.")
     @GetMapping("/me")
-    public ResponseEntity<?> getMyInfo(@AuthenticationPrincipal String username) {
-        return ResponseEntity.ok().body("현재 로그인한 사용자: " + username);
+    public ResponseEntity<?> getMyInfo(@AuthenticationPrincipal String userId) {
+        Long id = Long.parseLong(userId);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        return ResponseEntity.ok().body(user);
     }
 
     @Operation(summary = "회원 탈퇴", description = "JWT 토큰을 통해 현재 로그인한 사용자를 삭제하고 로그아웃 처리합니다.")
     @DeleteMapping("/delete")
-    public ResponseEntity<?> deleteUser(@AuthenticationPrincipal String username, HttpServletRequest request) {
+    public ResponseEntity<?> deleteUser(@AuthenticationPrincipal String userId, HttpServletRequest request) {
         String token = jwtTokenProvider.resolveToken(request);
         if (token != null && jwtTokenProvider.validateToken(token)) {
             long expiration = jwtTokenProvider.getExpiration(token);
             redisTemplate.opsForValue().set(token, "logout", expiration, TimeUnit.MILLISECONDS);
         }
 
-        refreshTokenService.deleteRefreshToken(username);
+        Long id = Long.parseLong(userId);
+        userRepository.deleteById(id);
+        refreshTokenService.deleteRefreshToken(userId);
 
         return ResponseEntity.ok("회원 탈퇴 및 로그아웃 완료");
     }
