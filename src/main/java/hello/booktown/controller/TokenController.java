@@ -41,8 +41,9 @@ public class TokenController {
                     );
 
                     return ResponseEntity.ok(Map.of(
+                            "grantType", "Bearer",
                             "accessToken", "Bearer " + newAccessToken,
-                            "refreshToken", "Bearer " + newRefreshToken
+                            "refreshToken", "httpOnly"
                     ));
                 })
                 .orElseGet(() -> ResponseEntity.status(401).body(Map.of(

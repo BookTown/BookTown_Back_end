@@ -34,17 +34,21 @@ public class SecurityConfig {
                                 "/api/users/register",
                                 "/api/users/login",
                                 "/oauth2/**",
+                                "/login/oauth2/code/**",
                                 "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/login/success",
+                                "/api/users/login/success",
                                 "/v3/api-docs/**",
                                 "/test/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(unauthorizedHandler()) // 👈 추가
+                        .authenticationEntryPoint(unauthorizedHandler())
                 )
                 .oauth2Login(oauth -> oauth
-                        .defaultSuccessUrl("/login/success", true)
+                        .defaultSuccessUrl("/api/users/login/success", true)
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
                         )
@@ -54,7 +58,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 👇 인증 실패 시 JSON 응답 주는 핸들러
     @Bean
     public AuthenticationEntryPoint unauthorizedHandler() {
         return (request, response, authException) -> {
@@ -64,8 +67,4 @@ public class SecurityConfig {
         };
     }
 
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-        return configuration.getAuthenticationManager();
-    }
 }
