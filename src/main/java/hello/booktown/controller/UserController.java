@@ -61,12 +61,21 @@ public class UserController {
     )
 
     @DeleteMapping("/delete")
-    public ResponseEntity<?> deleteUser(@AuthenticationPrincipal String userId, HttpServletRequest request) {
+    public ResponseEntity<?> deleteUser(@AuthenticationPrincipal String userId, HttpServletRequest request, HttpServletResponse response) {
         String token = jwtTokenProvider.resolveToken(request);
         if (token != null && jwtTokenProvider.validateToken(token)) {
             long expiration = jwtTokenProvider.getExpiration(token);
             redisTemplate.opsForValue().set(token, "logout", expiration, TimeUnit.MILLISECONDS);
         }
+
+        redisTemplate.delete("RT:" + userId);
+
+        Cookie expiredCookie = new Cookie("refreshToken", null);
+        expiredCookie.setMaxAge(0);
+        expiredCookie.setPath("/");
+        expiredCookie.setHttpOnly(true);
+        response.addCookie(expiredCookie);
+
         userRepository.deleteById(Long.parseLong(userId));
         return ResponseEntity.ok("회원 탈퇴 및 로그아웃 완료");
     }
@@ -80,17 +89,27 @@ public class UserController {
         }
     )
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletRequest request) {
+    public ResponseEntity<?> logout(@AuthenticationPrincipal String userId, HttpServletRequest request) {
         String token = jwtTokenProvider.resolveToken(request);
-        if (token != null && jwtTokenProvider.validateToken(token)) {
-            long expiration = jwtTokenProvider.getExpiration(token);
-            if (expiration <= 0) {
-                return ResponseEntity.status(401).body("이미 만료된 토큰입니다.");
-            }
-            redisTemplate.opsForValue().set(token, "logout", expiration, TimeUnit.MILLISECONDS);
+
+        if (token == null || !jwtTokenProvider.validateToken(token)) {
+            return ResponseEntity.status(401).body("유효하지 않은 토큰입니다.");
         }
+
+        String tokenUserId = jwtTokenProvider.getUsernameFromToken(token);
+        if (!tokenUserId.equals(userId)) {
+            return ResponseEntity.status(401).body("토큰 사용자 정보가 일치하지 않습니다.");
+        }
+
+        long expiration = jwtTokenProvider.getExpiration(token);
+        if (expiration <= 0) {
+            return ResponseEntity.status(401).body("이미 만료된 토큰입니다.");
+        }
+
+        redisTemplate.opsForValue().set(token, "logout", expiration, TimeUnit.MILLISECONDS);
         return ResponseEntity.ok("로그아웃 완료");
     }
+
 
     @Operation(
         summary = "소셜 로그인 성공 콜백",

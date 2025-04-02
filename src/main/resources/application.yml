@@ -3,8 +3,7 @@
 #    org.springframework.security: DEBUG
 spring:
   profiles:
-    active: prod
-
+    active: local
   jpa:
     properties:
       hibernate:
