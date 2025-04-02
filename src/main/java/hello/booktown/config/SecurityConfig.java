@@ -2,6 +2,7 @@ package hello.booktown.config;
 
 import hello.booktown.jwt.JwtAuthenticationFilter;
 import hello.booktown.oauth.CustomOAuth2UserService;
+import hello.booktown.oauth.OAuth2SuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,10 +16,14 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, CustomOAuth2UserService customOAuth2UserService) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          CustomOAuth2UserService customOAuth2UserService,
+                          OAuth2SuccessHandler oAuth2SuccessHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2SuccessHandler = oAuth2SuccessHandler;
     }
 
     @Bean
@@ -34,6 +39,7 @@ public class SecurityConfig {
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler()))
                 .oauth2Login(oauth -> oauth
+                        .successHandler(oAuth2SuccessHandler)
                         .defaultSuccessUrl("/api/users/login/success", true)
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                 )
