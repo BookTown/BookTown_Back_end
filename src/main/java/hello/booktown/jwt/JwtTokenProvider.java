@@ -1,5 +1,6 @@
 package hello.booktown.jwt;
 
+import hello.booktown.dto.TokenDto;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -90,5 +91,15 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    public TokenDto generateAllTokens(String userId) {
+        String accessToken = generateToken(userId);
+        String refreshToken = generateRefreshToken(userId);
+
+        return new TokenDto("Bearer", accessToken, refreshToken);
+    }
+
+    public long getRefreshExpirationTime() {
+        return refreshExpirationTime;
+    }
 
 }

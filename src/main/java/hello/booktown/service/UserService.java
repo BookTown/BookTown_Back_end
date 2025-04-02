@@ -21,8 +21,8 @@ public class UserService {
     }
 
     // 새로운 유저 저장
-    public User registerUser(String email, String provider, String providerId, String nickname, String profileImage) {
-        User user = new User(email, provider, providerId, nickname, profileImage);
+    public User registerUser(String email, String provider, String providerId, String username, String profileImage) {
+        User user = new User(email, provider, providerId, username, profileImage);
         return userRepository.save(user);
     }
 }
