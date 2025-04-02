@@ -1,7 +1,6 @@
 package hello.booktown.oauth;
 
 import hello.booktown.domain.User;
-import hello.booktown.dto.TokenDto;
 import hello.booktown.jwt.JwtTokenProvider;
 import hello.booktown.repository.UserRepository;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -55,11 +54,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         User user = userRepository.findByProviderAndProviderId(provider, providerId)
                 .orElseGet(() -> userRepository.save(new User(email, provider, providerId, username, profileImage)));
 
-        TokenDto tokenDto = jwtTokenProvider.generateAllTokens(user.getId().toString());
+        String accessToken = jwtTokenProvider.generateToken(user.getId().toString());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId().toString());
 
         redisTemplate.opsForValue().set(
                 "RT:" + user.getId(),
-                tokenDto.getRefreshToken(),
+                refreshToken,
                 jwtTokenProvider.getRefreshExpirationTime(),
                 TimeUnit.MILLISECONDS
         );
@@ -71,8 +71,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         userAttributes.put("email", user.getEmail());
         userAttributes.put("username", user.getUsername());
         userAttributes.put("profileImage", user.getProfileImage());
-        userAttributes.put("accessToken", tokenDto.getAccessToken());
-        userAttributes.put("refreshToken", tokenDto.getRefreshToken());
+        userAttributes.put("accessToken", accessToken);
+        userAttributes.put("refreshToken", refreshToken);
 
         return new DefaultOAuth2User(
                 Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),

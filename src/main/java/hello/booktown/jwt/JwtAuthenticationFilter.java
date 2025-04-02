@@ -25,38 +25,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.redisTemplate = redisTemplate;
     }
 
-    // 로그인, 회원가입 요청은 필터 제외
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-        return path.equals("/api/users/login") || path.equals("/api/users/register");
-    }
-
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-
-            if (jwtTokenProvider.validateToken(token)) {
-                String isBlacklisted = redisTemplate.opsForValue().get(token);
-                // 블랙리스트 등록된 토큰이라면 필터 진행 X
-                if (!"logout".equals(isBlacklisted)) {
-                    String username = jwtTokenProvider.getUsernameFromToken(token);
-
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+        String token = jwtTokenProvider.resolveToken(request);
+        if (token != null && jwtTokenProvider.validateToken(token)) {
+            String isBlacklisted = redisTemplate.opsForValue().get(token);
+            if (!"logout".equals(isBlacklisted)) {
+                String username = jwtTokenProvider.getUsernameFromToken(token);
+                if (username != null && username.matches("\\d+")) {
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                            username, null, Collections.emptyList());
+                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             }
         }
-
         filterChain.doFilter(request, response);
     }
 }

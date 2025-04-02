@@ -1,6 +1,5 @@
 package hello.booktown.jwt;
 
-import hello.booktown.dto.TokenDto;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -30,15 +29,20 @@ public class JwtTokenProvider {
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
-    public long getRefreshTokenRemainingMillis(String token) {
-        return getExpiration(token);
-    }
-
     public String generateToken(String username) {
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String generateRefreshToken(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + refreshExpirationTime))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -54,10 +58,7 @@ public class JwtTokenProvider {
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(key)
-                    .build()
-                    .parseClaimsJws(token);
+            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
             return false;
@@ -80,22 +81,6 @@ public class JwtTokenProvider {
                 .getBody()
                 .getExpiration()
                 .getTime() - System.currentTimeMillis();
-    }
-
-    public String generateRefreshToken(String username) {
-        return Jwts.builder()
-                .setSubject(username)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + refreshExpirationTime)) // 예: 7일
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    public TokenDto generateAllTokens(String userId) {
-        String accessToken = generateToken(userId);
-        String refreshToken = generateRefreshToken(userId);
-
-        return new TokenDto("Bearer", accessToken, refreshToken);
     }
 
     public long getRefreshExpirationTime() {

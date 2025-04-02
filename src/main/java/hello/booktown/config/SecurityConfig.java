@@ -5,8 +5,6 @@ import hello.booktown.oauth.CustomOAuth2UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
@@ -30,31 +28,16 @@ public class SecurityConfig {
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(formLogin -> formLogin.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/users/register",
-                                "/api/users/login",
-                                "/oauth2/**",
-                                "/login/oauth2/code/**",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/login/success",
-                                "/api/users/login/success",
-                                "/v3/api-docs/**",
-                                "/test/**"
-                        ).permitAll()
+                        .requestMatchers("/api/users/**", "/oauth2/**", "/login/oauth2/code/**", "/swagger-ui/**", "/v3/api-docs/**", "/test/**")
+                        .permitAll()
                         .anyRequest().authenticated()
                 )
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(unauthorizedHandler())
-                )
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler()))
                 .oauth2Login(oauth -> oauth
                         .defaultSuccessUrl("/api/users/login/success", true)
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .userService(customOAuth2UserService)
-                        )
+                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
 
@@ -66,5 +49,4 @@ public class SecurityConfig {
             response.getWriter().write("{ \"error\": \"인증이 필요합니다.\" }");
         };
     }
-
 }
