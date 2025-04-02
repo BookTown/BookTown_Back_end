@@ -39,6 +39,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/login/success",
                                 "/api/users/login/success"
+                                "/v3/api-docs/**",
+                                "/test/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
