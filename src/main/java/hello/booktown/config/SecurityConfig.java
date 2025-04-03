@@ -40,7 +40,6 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler()))
                 .oauth2Login(oauth -> oauth
                         .successHandler(oAuth2SuccessHandler)
-                        .defaultSuccessUrl("/api/users/login/success", true)
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

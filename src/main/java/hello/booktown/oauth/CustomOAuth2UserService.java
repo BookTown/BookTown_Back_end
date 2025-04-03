@@ -1,152 +1,151 @@
 package hello.booktown.oauth;
 
 import hello.booktown.domain.User;
-import hello.booktown.jwt.JwtTokenProvider;
 import hello.booktown.repository.UserRepository;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
 
-@Service
+@Component
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
+    private static final Logger log = LoggerFactory.getLogger(CustomOAuth2UserService.class);
     private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
-    private final StringRedisTemplate redisTemplate;
 
-    public CustomOAuth2UserService(UserRepository userRepository,
-                                   JwtTokenProvider jwtTokenProvider,
-                                   StringRedisTemplate redisTemplate) {
+    public CustomOAuth2UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.jwtTokenProvider = jwtTokenProvider;
-        this.redisTemplate = redisTemplate;
     }
 
     @Override
-    public OAuth2User loadUser(OAuth2UserRequest userRequest) {
-        OAuth2User oAuth2User = super.loadUser(userRequest);
+    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+        log.info("🔑 OAuth2 로그인 시도 - provider: {}", userRequest.getClientRegistration().getRegistrationId());
+        OAuth2User oAuth2User;
+
+        try {
+            log.debug("super.loadUser() 실행 직전");
+            oAuth2User = super.loadUser(userRequest);
+            log.debug("super.loadUser() 성공: {}", oAuth2User.getAttributes());
+        } catch (OAuth2AuthenticationException e) {
+            log.error("OAuth2AuthenticationException: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("기타 예외 발생: {}", e.getMessage());
+            throw new OAuth2AuthenticationException(new OAuth2Error("load_user_failed"), "사용자 정보를 가져오는 데 실패했습니다.");
+        }
+
         Map<String, Object> attributes = oAuth2User.getAttributes();
+        log.debug("받은 attributes: {}", attributes);
 
         String provider = userRequest.getClientRegistration().getRegistrationId();
         String providerId = extractProviderId(provider, attributes);
-        String email = Optional.ofNullable(extractEmail(provider, attributes))
-                .filter(e -> !e.isBlank())
-                .orElse(provider + "_" + providerId + "@booktown.local");
+        log.debug("providerId: {}", providerId);
 
-        String username = Optional.ofNullable(extractUsername(provider, attributes))
-                .filter(str -> !str.isBlank())
-                .orElse("소셜사용자");
+        if (providerId == null || providerId.isBlank()) {
+            throw new OAuth2AuthenticationException("providerId를 찾을 수 없습니다.");
+        }
+
+        String email = Optional.ofNullable(extractEmail(provider, attributes))
+                .orElse(provider + "_" + providerId + "@booktown.local");
+        log.debug("email: {}", email);
+
+        String username = Optional.ofNullable(extractUsername(provider, attributes)).orElse("소셜사용자");
+        log.debug("username: {}", username);
 
         String profileImage = Optional.ofNullable(extractProfileImage(provider, attributes))
-                .filter(str -> !str.isBlank())
                 .orElse("https://booktown.local/default-profile.png");
+        log.debug("profileImage: {}", profileImage);
 
         User user = userRepository.findByProviderAndProviderId(provider, providerId)
-                .orElseGet(() -> userRepository.save(new User(email, provider, providerId, username, profileImage)));
-
-        String accessToken = jwtTokenProvider.generateToken(user.getId().toString());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId().toString());
-
-        redisTemplate.opsForValue().set(
-                "RT:" + user.getId(),
-                refreshToken,
-                jwtTokenProvider.getRefreshExpirationTime(),
-                TimeUnit.MILLISECONDS
-        );
+                .orElseGet(() -> {
+                    log.info("새 사용자 저장");
+                    return userRepository.save(new User(email, provider, providerId, username, profileImage));
+                });
 
         Map<String, Object> userAttributes = new HashMap<>();
-        userAttributes.put("id", user.getId().toString());
-        userAttributes.put("provider", user.getProvider());
-        userAttributes.put("providerId", user.getProviderId());
-        userAttributes.put("email", user.getEmail());
-        userAttributes.put("username", user.getUsername());
-        userAttributes.put("profileImage", user.getProfileImage());
-        userAttributes.put("accessToken", accessToken);
-        userAttributes.put("refreshToken", refreshToken);
+        userAttributes.put("userId", user.getId().toString());
 
+        log.info("OAuth2 사용자 인증 완료 - userId: {}", user.getId());
         return new DefaultOAuth2User(
                 Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),
                 userAttributes,
-                "id"
+                "userId"
         );
     }
 
     private String extractProviderId(String provider, Map<String, Object> attributes) {
-        switch (provider) {
-            case "google": return (String) attributes.get("sub");
-            case "kakao": return String.valueOf(attributes.get("id"));
-            case "naver":
-                Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-                return (String) response.get("id");
-            default: return null;
+        try {
+            return switch (provider) {
+                case "google" -> (String) attributes.get("sub");
+                case "kakao" -> String.valueOf(attributes.get("id"));
+                case "naver" -> {
+                    Map<String, Object> response = (Map<String, Object>) attributes.get("response");
+                    yield (String) response.get("id");
+                }
+                default -> null;
+            };
+        } catch (Exception e) {
+            log.error("providerId 추출 실패: {}", e.getMessage());
+            return null;
         }
     }
 
     private String extractEmail(String provider, Map<String, Object> attributes) {
-        switch (provider) {
-            case "google": return (String) attributes.get("email");
-            case "kakao":
-                Object accountObj = attributes.get("kakao_account");
-                if (accountObj instanceof Map) {
-                    Map<String, Object> kakaoAccount = (Map<String, Object>) accountObj;
-                    Object emailObj = kakaoAccount.get("email");
-                    return emailObj instanceof String ? (String) emailObj : null;
-                }
-                return null;
-            case "naver":
+        try {
+            if ("kakao".equals(provider)) {
+                Map<String, Object> account = (Map<String, Object>) attributes.get("kakao_account");
+                return (String) account.get("email");
+            } else if ("google".equals(provider)) {
+                return (String) attributes.get("email");
+            } else if ("naver".equals(provider)) {
                 Map<String, Object> response = (Map<String, Object>) attributes.get("response");
                 return (String) response.get("email");
-            default: return null;
+            }
+        } catch (Exception e) {
+            log.warn("이메일 추출 실패: {}", e.getMessage());
         }
+        return null;
     }
 
     private String extractUsername(String provider, Map<String, Object> attributes) {
-        switch (provider) {
-            case "google": return (String) attributes.get("name");
-            case "kakao":
-                Object accountObj = attributes.get("kakao_account");
-                if (accountObj instanceof Map) {
-                    Map<String, Object> kakaoAccount = (Map<String, Object>) accountObj;
-                    Object profileObj = kakaoAccount.get("profile");
-                    if (profileObj instanceof Map) {
-                        return (String) ((Map<?, ?>) profileObj).get("nickname");
-                    }
-                }
-                return null;
-            case "naver":
+        try {
+            if ("kakao".equals(provider)) {
+                Map<String, Object> profile = (Map<String, Object>) ((Map<String, Object>) attributes.get("kakao_account")).get("profile");
+                return (String) profile.get("nickname");
+            } else if ("google".equals(provider)) {
+                return (String) attributes.get("name");
+            } else if ("naver".equals(provider)) {
                 Map<String, Object> response = (Map<String, Object>) attributes.get("response");
                 return (String) response.get("nickname");
-            default: return null;
+            }
+        } catch (Exception e) {
+            log.warn("사용자명 추출 실패: {}", e.getMessage());
         }
+        return null;
     }
 
     private String extractProfileImage(String provider, Map<String, Object> attributes) {
-        switch (provider) {
-            case "google": return (String) attributes.get("picture");
-            case "kakao":
-                Object accountObj = attributes.get("kakao_account");
-                if (accountObj instanceof Map) {
-                    Map<String, Object> kakaoAccount = (Map<String, Object>) accountObj;
-                    Object profileObj = kakaoAccount.get("profile");
-                    if (profileObj instanceof Map) {
-                        return (String) ((Map<?, ?>) profileObj).get("profile_image_url");
-                    }
-                }
-                return null;
-            case "naver":
+        try {
+            if ("kakao".equals(provider)) {
+                Map<String, Object> profile = (Map<String, Object>) ((Map<String, Object>) attributes.get("kakao_account")).get("profile");
+                return (String) profile.get("profile_image_url");
+            } else if ("google".equals(provider)) {
+                return (String) attributes.get("picture");
+            } else if ("naver".equals(provider)) {
                 Map<String, Object> response = (Map<String, Object>) attributes.get("response");
                 return (String) response.get("profile_image");
-            default: return null;
+            }
+        } catch (Exception e) {
+            log.warn("프로필 이미지 추출 실패: {}", e.getMessage());
         }
+        return null;
     }
 }
