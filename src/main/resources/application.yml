@@ -1,6 +1,5 @@
-#logging:
-#  level:
-#    org.springframework.security: DEBUG
+# application.yml
+
 spring:
   profiles:
     active: local
@@ -26,6 +25,7 @@ spring:
               - profile
               - email
           kakao:
+            client-authentication-method: client_secret_post
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
             redirect-uri: ${KAKAO_REDIRECT_URI}
