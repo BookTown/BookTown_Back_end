@@ -1,11 +1,5 @@
 # application.yml
 
-logging:
-  level:
-    org.springframework.security: DEBUG
-    org.springframework.web.client.RestTemplate: DEBUG
-    org.springframework.web.reactive.function.client.ExchangeFunctions: TRACE
-    org.springframework.security.oauth2.client: DEBUG
 spring:
   profiles:
     active: local
