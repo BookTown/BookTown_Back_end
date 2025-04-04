@@ -27,13 +27,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        log.info("🔑 OAuth2 로그인 시도 - provider: {}", userRequest.getClientRegistration().getRegistrationId());
+        log.info("OAuth2 로그인 시도 - provider: {}", userRequest.getClientRegistration().getRegistrationId());
         OAuth2User oAuth2User;
 
         try {
-            log.debug("super.loadUser() 실행 직전");
             oAuth2User = super.loadUser(userRequest);
-            log.debug("super.loadUser() 성공: {}", oAuth2User.getAttributes());
+            log.debug("받은 attributes: {}", oAuth2User.getAttributes());
         } catch (OAuth2AuthenticationException e) {
             log.error("OAuth2AuthenticationException: {}", e.getMessage());
             throw e;
@@ -43,37 +42,29 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
 
         Map<String, Object> attributes = oAuth2User.getAttributes();
-        log.debug("받은 attributes: {}", attributes);
 
         String provider = userRequest.getClientRegistration().getRegistrationId();
         String providerId = extractProviderId(provider, attributes);
-        log.debug("providerId: {}", providerId);
-
         if (providerId == null || providerId.isBlank()) {
             throw new OAuth2AuthenticationException("providerId를 찾을 수 없습니다.");
         }
 
         String email = Optional.ofNullable(extractEmail(provider, attributes))
                 .orElse(provider + "_" + providerId + "@booktown.local");
-        log.debug("email: {}", email);
-
         String username = Optional.ofNullable(extractUsername(provider, attributes)).orElse("소셜사용자");
-        log.debug("username: {}", username);
 
-        String profileImage = Optional.ofNullable(extractProfileImage(provider, attributes))
-                .orElse("https://booktown.local/default-profile.png");
-        log.debug("profileImage: {}", profileImage);
+        // 프로필 이미지는 무조건 null로 저장
+        String profileImage = null;
 
         User user = userRepository.findByProviderAndProviderId(provider, providerId)
                 .orElseGet(() -> {
-                    log.info("새 사용자 저장");
+                    log.info("신규 사용자 등록: {}", email);
                     return userRepository.save(new User(email, provider, providerId, username, profileImage));
                 });
 
         Map<String, Object> userAttributes = new HashMap<>();
         userAttributes.put("userId", user.getId().toString());
 
-        log.info("OAuth2 사용자 인증 완료 - userId: {}", user.getId());
         return new DefaultOAuth2User(
                 Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),
                 userAttributes,
@@ -128,23 +119,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             }
         } catch (Exception e) {
             log.warn("사용자명 추출 실패: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    private String extractProfileImage(String provider, Map<String, Object> attributes) {
-        try {
-            if ("kakao".equals(provider)) {
-                Map<String, Object> profile = (Map<String, Object>) ((Map<String, Object>) attributes.get("kakao_account")).get("profile");
-                return (String) profile.get("profile_image_url");
-            } else if ("google".equals(provider)) {
-                return (String) attributes.get("picture");
-            } else if ("naver".equals(provider)) {
-                Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-                return (String) response.get("profile_image");
-            }
-        } catch (Exception e) {
-            log.warn("프로필 이미지 추출 실패: {}", e.getMessage());
         }
         return null;
     }
