@@ -2,8 +2,6 @@ package hello.booktown.oauth;
 
 import hello.booktown.domain.User;
 import hello.booktown.repository.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -18,7 +16,6 @@ import java.util.*;
 @Component
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
-    private static final Logger log = LoggerFactory.getLogger(CustomOAuth2UserService.class);
     private final UserRepository userRepository;
 
     public CustomOAuth2UserService(UserRepository userRepository) {
@@ -27,18 +24,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        log.info("OAuth2 로그인 시도 - provider: {}", userRequest.getClientRegistration().getRegistrationId());
         OAuth2User oAuth2User;
-
         try {
             oAuth2User = super.loadUser(userRequest);
-            log.debug("받은 attributes: {}", oAuth2User.getAttributes());
-        } catch (OAuth2AuthenticationException e) {
-            log.error("OAuth2AuthenticationException: {}", e.getMessage());
-            throw e;
         } catch (Exception e) {
-            log.error("기타 예외 발생: {}", e.getMessage());
-            throw new OAuth2AuthenticationException(new OAuth2Error("load_user_failed"), "사용자 정보를 가져오는 데 실패했습니다.");
+            throw new OAuth2AuthenticationException(new OAuth2Error("load_user_failed"), "사용자 정보 로딩 실패");
         }
 
         Map<String, Object> attributes = oAuth2User.getAttributes();
@@ -46,21 +36,16 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String provider = userRequest.getClientRegistration().getRegistrationId();
         String providerId = extractProviderId(provider, attributes);
         if (providerId == null || providerId.isBlank()) {
-            throw new OAuth2AuthenticationException("providerId를 찾을 수 없습니다.");
+            throw new OAuth2AuthenticationException("providerId가 없습니다.");
         }
 
         String email = Optional.ofNullable(extractEmail(provider, attributes))
                 .orElse(provider + "_" + providerId + "@booktown.local");
         String username = Optional.ofNullable(extractUsername(provider, attributes)).orElse("소셜사용자");
-
-        // 프로필 이미지는 무조건 null로 저장
-        String profileImage = null;
+        String profileImage = null; // 무조건 null 저장
 
         User user = userRepository.findByProviderAndProviderId(provider, providerId)
-                .orElseGet(() -> {
-                    log.info("신규 사용자 등록: {}", email);
-                    return userRepository.save(new User(email, provider, providerId, username, profileImage));
-                });
+                .orElseGet(() -> userRepository.save(new User(email, provider, providerId, username, profileImage)));
 
         Map<String, Object> userAttributes = new HashMap<>();
         userAttributes.put("userId", user.getId().toString());
@@ -84,42 +69,45 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 default -> null;
             };
         } catch (Exception e) {
-            log.error("providerId 추출 실패: {}", e.getMessage());
             return null;
         }
     }
 
     private String extractEmail(String provider, Map<String, Object> attributes) {
         try {
-            if ("kakao".equals(provider)) {
-                Map<String, Object> account = (Map<String, Object>) attributes.get("kakao_account");
-                return (String) account.get("email");
-            } else if ("google".equals(provider)) {
-                return (String) attributes.get("email");
-            } else if ("naver".equals(provider)) {
-                Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-                return (String) response.get("email");
-            }
+            return switch (provider) {
+                case "google" -> (String) attributes.get("email");
+                case "kakao" -> {
+                    Map<String, Object> account = (Map<String, Object>) attributes.get("kakao_account");
+                    yield (String) account.get("email");
+                }
+                case "naver" -> {
+                    Map<String, Object> response = (Map<String, Object>) attributes.get("response");
+                    yield (String) response.get("email");
+                }
+                default -> null;
+            };
         } catch (Exception e) {
-            log.warn("이메일 추출 실패: {}", e.getMessage());
+            return null;
         }
-        return null;
     }
 
     private String extractUsername(String provider, Map<String, Object> attributes) {
         try {
-            if ("kakao".equals(provider)) {
-                Map<String, Object> profile = (Map<String, Object>) ((Map<String, Object>) attributes.get("kakao_account")).get("profile");
-                return (String) profile.get("nickname");
-            } else if ("google".equals(provider)) {
-                return (String) attributes.get("name");
-            } else if ("naver".equals(provider)) {
-                Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-                return (String) response.get("nickname");
-            }
+            return switch (provider) {
+                case "google" -> (String) attributes.get("name");
+                case "kakao" -> {
+                    Map<String, Object> profile = (Map<String, Object>) ((Map<String, Object>) attributes.get("kakao_account")).get("profile");
+                    yield (String) profile.get("nickname");
+                }
+                case "naver" -> {
+                    Map<String, Object> response = (Map<String, Object>) attributes.get("response");
+                    yield (String) response.get("nickname");
+                }
+                default -> null;
+            };
         } catch (Exception e) {
-            log.warn("사용자명 추출 실패: {}", e.getMessage());
+            return null;
         }
-        return null;
     }
 }
