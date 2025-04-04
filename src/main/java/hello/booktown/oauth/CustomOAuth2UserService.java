@@ -45,6 +45,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String profileImage = null; // 무조건 null 저장
 
         User user = userRepository.findByProviderAndProviderId(provider, providerId)
+                .map(existingUser -> {
+                    existingUser.updateLastLogin();
+                    return userRepository.save(existingUser);
+                })
                 .orElseGet(() -> userRepository.save(new User(email, provider, providerId, username, profileImage)));
 
         Map<String, Object> userAttributes = new HashMap<>();
