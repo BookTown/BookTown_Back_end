@@ -12,9 +12,12 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 @Component
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
+
+    private static final Logger logger = Logger.getLogger(OAuth2SuccessHandler.class.getName());
 
     private final JwtTokenProvider jwtTokenProvider;
     private final StringRedisTemplate redisTemplate;
@@ -31,11 +34,18 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         DefaultOAuth2User user = (DefaultOAuth2User) authentication.getPrincipal();
         String userId = (String) user.getAttributes().get("userId");
 
+        logger.info("OAuth2 로그인 성공 - userId: " + userId);
+
         String accessToken = jwtTokenProvider.generateToken(userId);
         String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
 
+        logger.info("AccessToken 생성 완료");
+        logger.info("RefreshToken 생성 완료");
+
         redisTemplate.opsForValue().set("RT:" + userId, refreshToken,
                 jwtTokenProvider.getRefreshExpirationTime(), TimeUnit.MILLISECONDS);
+
+        logger.info("RefreshToken Redis 저장 완료: RT:" + userId);
 
         Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
         refreshCookie.setHttpOnly(true);
@@ -44,7 +54,10 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         refreshCookie.setMaxAge((int) (jwtTokenProvider.getRefreshExpirationTime() / 1000));
         response.addCookie(refreshCookie);
 
+        logger.info("RefreshToken 쿠키 저장 완료");
+
         String redirectUrl = "https://booktown.site/front/oauth/callback?accessToken=" + accessToken;
+        logger.info("프론트로 리디렉션: " + redirectUrl);
         response.sendRedirect(redirectUrl);
     }
 }
