@@ -1,4 +1,5 @@
 # application.yml
+
 spring:
   profiles:
     active: prod
