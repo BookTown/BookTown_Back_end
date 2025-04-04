@@ -1,7 +1,7 @@
 # application.yml
 spring:
   profiles:
-    active: local
+    active: prod
 
   jpa:
     properties:
@@ -73,6 +73,7 @@ spring:
     chat:
       options:
         model: gpt-4o-mini
+
 
 jwt:
   secret: ${JWT_SECRET}
