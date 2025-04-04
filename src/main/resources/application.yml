@@ -3,6 +3,7 @@
 spring:
   profiles:
     active: local
+
   jpa:
     properties:
       hibernate:
@@ -20,7 +21,6 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: ${GOOGLE_REDIRECT_URI}  # 각 프로필에서 덮어쓰기
             scope:
               - profile
               - email
@@ -28,7 +28,6 @@ spring:
             client-authentication-method: client_secret_post
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
-            redirect-uri: ${KAKAO_REDIRECT_URI}
             authorization-grant-type: authorization_code
             client-name: Kakao
             scope:
@@ -38,7 +37,6 @@ spring:
           naver:
             client-id: ${NAVER_CLIENT_ID}
             client-secret: ${NAVER_CLIENT_SECRET}
-            redirect-uri: ${NAVER_REDIRECT_URI}
             authorization-grant-type: authorization_code
             client-name: Naver
             scope:
@@ -52,7 +50,6 @@ spring:
             token-uri: https://kauth.kakao.com/oauth/token
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
-
           naver:
             authorization-uri: https://nid.naver.com/oauth2.0/authorize
             token-uri: https://nid.naver.com/oauth2.0/token
@@ -67,9 +64,9 @@ spring:
         access-key: ${S3_ACCESS_KEY}
         secret-key: ${S3_SECRET_KEY}
       stack:
-        auto : false
+        auto: false
       region:
-        static : ${S3_REGION}
+        static: ${S3_REGION}
 
   ai:
     openai:
@@ -77,7 +74,6 @@ spring:
     chat:
       options:
         model: gpt-4o-mini
-
 
 jwt:
   secret: ${JWT_SECRET}
