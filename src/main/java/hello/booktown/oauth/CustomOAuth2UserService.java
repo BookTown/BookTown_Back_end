@@ -1,152 +1,117 @@
 package hello.booktown.oauth;
 
 import hello.booktown.domain.User;
-import hello.booktown.jwt.JwtTokenProvider;
 import hello.booktown.repository.UserRepository;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
 
-@Service
+@Component
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
-    private final StringRedisTemplate redisTemplate;
 
-    public CustomOAuth2UserService(UserRepository userRepository,
-                                   JwtTokenProvider jwtTokenProvider,
-                                   StringRedisTemplate redisTemplate) {
+    public CustomOAuth2UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.jwtTokenProvider = jwtTokenProvider;
-        this.redisTemplate = redisTemplate;
     }
 
     @Override
-    public OAuth2User loadUser(OAuth2UserRequest userRequest) {
-        OAuth2User oAuth2User = super.loadUser(userRequest);
+    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+        OAuth2User oAuth2User;
+        try {
+            oAuth2User = super.loadUser(userRequest);
+        } catch (Exception e) {
+            throw new OAuth2AuthenticationException(new OAuth2Error("load_user_failed"), "사용자 정보 로딩 실패");
+        }
+
         Map<String, Object> attributes = oAuth2User.getAttributes();
 
         String provider = userRequest.getClientRegistration().getRegistrationId();
         String providerId = extractProviderId(provider, attributes);
+        if (providerId == null || providerId.isBlank()) {
+            throw new OAuth2AuthenticationException("providerId가 없습니다.");
+        }
+
         String email = Optional.ofNullable(extractEmail(provider, attributes))
-                .filter(e -> !e.isBlank())
                 .orElse(provider + "_" + providerId + "@booktown.local");
-
-        String username = Optional.ofNullable(extractUsername(provider, attributes))
-                .filter(str -> !str.isBlank())
-                .orElse("소셜사용자");
-
-        String profileImage = Optional.ofNullable(extractProfileImage(provider, attributes))
-                .filter(str -> !str.isBlank())
-                .orElse("https://booktown.local/default-profile.png");
+        String username = Optional.ofNullable(extractUsername(provider, attributes)).orElse("소셜사용자");
+        String profileImage = null; // 무조건 null 저장
 
         User user = userRepository.findByProviderAndProviderId(provider, providerId)
+                .map(existingUser -> {
+                    existingUser.updateLastLogin();
+                    return userRepository.save(existingUser);
+                })
                 .orElseGet(() -> userRepository.save(new User(email, provider, providerId, username, profileImage)));
 
-        String accessToken = jwtTokenProvider.generateToken(user.getId().toString());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId().toString());
-
-        redisTemplate.opsForValue().set(
-                "RT:" + user.getId(),
-                refreshToken,
-                jwtTokenProvider.getRefreshExpirationTime(),
-                TimeUnit.MILLISECONDS
-        );
-
         Map<String, Object> userAttributes = new HashMap<>();
-        userAttributes.put("id", user.getId().toString());
-        userAttributes.put("provider", user.getProvider());
-        userAttributes.put("providerId", user.getProviderId());
-        userAttributes.put("email", user.getEmail());
-        userAttributes.put("username", user.getUsername());
-        userAttributes.put("profileImage", user.getProfileImage());
-        userAttributes.put("accessToken", accessToken);
-        userAttributes.put("refreshToken", refreshToken);
+        userAttributes.put("userId", user.getId().toString());
 
         return new DefaultOAuth2User(
                 Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),
                 userAttributes,
-                "id"
+                "userId"
         );
     }
 
     private String extractProviderId(String provider, Map<String, Object> attributes) {
-        switch (provider) {
-            case "google": return (String) attributes.get("sub");
-            case "kakao": return String.valueOf(attributes.get("id"));
-            case "naver":
-                Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-                return (String) response.get("id");
-            default: return null;
+        try {
+            return switch (provider) {
+                case "google" -> (String) attributes.get("sub");
+                case "kakao" -> String.valueOf(attributes.get("id"));
+                case "naver" -> {
+                    Map<String, Object> response = (Map<String, Object>) attributes.get("response");
+                    yield (String) response.get("id");
+                }
+                default -> null;
+            };
+        } catch (Exception e) {
+            return null;
         }
     }
 
     private String extractEmail(String provider, Map<String, Object> attributes) {
-        switch (provider) {
-            case "google": return (String) attributes.get("email");
-            case "kakao":
-                Object accountObj = attributes.get("kakao_account");
-                if (accountObj instanceof Map) {
-                    Map<String, Object> kakaoAccount = (Map<String, Object>) accountObj;
-                    Object emailObj = kakaoAccount.get("email");
-                    return emailObj instanceof String ? (String) emailObj : null;
+        try {
+            return switch (provider) {
+                case "google" -> (String) attributes.get("email");
+                case "kakao" -> {
+                    Map<String, Object> account = (Map<String, Object>) attributes.get("kakao_account");
+                    yield (String) account.get("email");
                 }
-                return null;
-            case "naver":
-                Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-                return (String) response.get("email");
-            default: return null;
+                case "naver" -> {
+                    Map<String, Object> response = (Map<String, Object>) attributes.get("response");
+                    yield (String) response.get("email");
+                }
+                default -> null;
+            };
+        } catch (Exception e) {
+            return null;
         }
     }
 
     private String extractUsername(String provider, Map<String, Object> attributes) {
-        switch (provider) {
-            case "google": return (String) attributes.get("name");
-            case "kakao":
-                Object accountObj = attributes.get("kakao_account");
-                if (accountObj instanceof Map) {
-                    Map<String, Object> kakaoAccount = (Map<String, Object>) accountObj;
-                    Object profileObj = kakaoAccount.get("profile");
-                    if (profileObj instanceof Map) {
-                        return (String) ((Map<?, ?>) profileObj).get("nickname");
-                    }
+        try {
+            return switch (provider) {
+                case "google" -> (String) attributes.get("name");
+                case "kakao" -> {
+                    Map<String, Object> profile = (Map<String, Object>) ((Map<String, Object>) attributes.get("kakao_account")).get("profile");
+                    yield (String) profile.get("nickname");
                 }
-                return null;
-            case "naver":
-                Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-                return (String) response.get("nickname");
-            default: return null;
-        }
-    }
-
-    private String extractProfileImage(String provider, Map<String, Object> attributes) {
-        switch (provider) {
-            case "google": return (String) attributes.get("picture");
-            case "kakao":
-                Object accountObj = attributes.get("kakao_account");
-                if (accountObj instanceof Map) {
-                    Map<String, Object> kakaoAccount = (Map<String, Object>) accountObj;
-                    Object profileObj = kakaoAccount.get("profile");
-                    if (profileObj instanceof Map) {
-                        return (String) ((Map<?, ?>) profileObj).get("profile_image_url");
-                    }
+                case "naver" -> {
+                    Map<String, Object> response = (Map<String, Object>) attributes.get("response");
+                    yield (String) response.get("nickname");
                 }
-                return null;
-            case "naver":
-                Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-                return (String) response.get("profile_image");
-            default: return null;
+                default -> null;
+            };
+        } catch (Exception e) {
+            return null;
         }
     }
 }
