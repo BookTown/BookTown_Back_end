@@ -6,8 +6,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.Date;
-
 @Entity
 @Table(uniqueConstraints = {
         @UniqueConstraint(columnNames = {"provider", "providerId"})
@@ -32,39 +30,11 @@ public class User {
 
     private String email;
 
-    private String provider;     // google, kakao 등
+    private String provider;
 
-    private String providerId;   // 소셜 고유 ID
+    private String providerId;
 
     private String username;
 
     private String profileImage;
-
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(updatable = false)
-    private Date createdAt;
-
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date updatedAt; //업데이트 컨트롤러나 서비스 만들고 구현하기
-
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date lastLogin;
-
-    @PrePersist
-    protected void onCreate() {
-        Date now = new Date();
-        this.createdAt = now;
-        this.updatedAt = now;
-        this.lastLogin = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = new Date();
-        this.lastLogin = new Date();
-    }
-
-    public void updateLastLogin() {
-        this.lastLogin = new Date();
-    }
 }
