@@ -44,10 +44,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         refreshCookie.setMaxAge((int) (jwtTokenProvider.getRefreshExpirationTime() / 1000));
         response.addCookie(refreshCookie);
 
-        System.out.println("로그인 성공: userId = " + userId);
-        System.out.println("AccessToken = " + accessToken);
-        System.out.println("RefreshToken = " + refreshToken);
-
         String redirectUrl = "https://booktown.site/front/oauth/callback?accessToken=" + accessToken;
         response.sendRedirect(redirectUrl);
     }
