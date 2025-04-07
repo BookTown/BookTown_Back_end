@@ -78,7 +78,7 @@ spring:
       options:
         model: gpt-4o-mini
     stabilityai:
-      api-key: sk-qezbFyXUuCEvUXShoFY9a1bOHfJshqH1tWX8F4ztmiYnbYD8
+      api-key: ${STABLEDIFFUSION_KEY}
       image:
         options:
           width: 1024
