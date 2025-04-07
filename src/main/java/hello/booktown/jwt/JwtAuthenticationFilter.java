@@ -32,10 +32,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String token = jwtTokenProvider.resolveToken(request);
+
         if (token != null && jwtTokenProvider.validateToken(token)) {
             String isBlacklisted = redisTemplate.opsForValue().get(token);
+
             if (!"logout".equals(isBlacklisted)) {
                 String username = jwtTokenProvider.getUsernameFromToken(token);
+
                 if (username != null && username.matches("\\d+")) {
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                             username, null, Collections.emptyList());
@@ -44,6 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         }
+
         filterChain.doFilter(request, response);
     }
 }
