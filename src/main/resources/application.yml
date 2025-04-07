@@ -2,7 +2,7 @@
 
 spring:
   profiles:
-    active: prod
+    active: local
 
   jpa:
     hibernate:
@@ -77,6 +77,14 @@ spring:
     chat:
       options:
         model: gpt-4o-mini
+    stabilityai:
+      api-key: sk-qezbFyXUuCEvUXShoFY9a1bOHfJshqH1tWX8F4ztmiYnbYD8
+      image:
+        options:
+          width: 1024
+          height: 512
+          style-preset: anime
+
 
 
 jwt:
