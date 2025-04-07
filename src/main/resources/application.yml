@@ -1,7 +1,7 @@
 # application.yml
 spring:
   profiles:
-    active: local
+    active: prod
 
   jpa:
     hibernate:
@@ -86,8 +86,6 @@ spring:
           width: 1024
           height: 512
           style-preset: anime
-
-
 
 jwt:
   secret: ${JWT_SECRET}
