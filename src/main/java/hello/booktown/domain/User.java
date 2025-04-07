@@ -8,9 +8,10 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"provider", "providerId"})
+        @UniqueConstraint(columnNames = {"provider", "providerId"}, name = "users")
 })
 @Getter
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
