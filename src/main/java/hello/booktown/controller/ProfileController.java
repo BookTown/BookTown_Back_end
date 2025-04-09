@@ -48,7 +48,16 @@ public class ProfileController {
         return ResponseEntity.ok(user);
     }
 
-    @Operation(summary = "사용자 프로필 정보 수정", description = "이름, 자기소개, 점수, 난이도 정보만 수정합니다.")
+    @Operation(
+            summary = "사용자 프로필 정보 수정",
+            description = "사용자가 자신의 이름, 자기소개, 점수, 난이도 정보를 선택적으로 수정합니다.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "프로필 정보 수정 성공"),
+                    @ApiResponse(responseCode = "401", description = "유효하지 않은 토큰"),
+                    @ApiResponse(responseCode = "403", description = "자신의 정보만 수정 가능"),
+                    @ApiResponse(responseCode = "404", description = "사용자 정보 없음")
+            }
+    )
     @PatchMapping("/update/{userId}")
     public ResponseEntity<?> updateProfileInfo(@PathVariable Long userId,
                                                @RequestBody ProfileUpdateRequestDto dto,
@@ -75,7 +84,16 @@ public class ProfileController {
         return ResponseEntity.ok("프로필 정보가 수정되었습니다.");
     }
 
-    @Operation(summary = "프로필 이미지 수정", description = "자신의 프로필 이미지를 수정합니다.")
+    @Operation(
+            summary = "프로필 이미지 수정",
+            description = "로그인한 사용자가 자신의 프로필 이미지를 수정합니다. 이전 이미지가 존재할 경우 S3에서 삭제됩니다.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "이미지 업로드 및 수정 성공"),
+                    @ApiResponse(responseCode = "400", description = "업로드된 파일이 비어있음"),
+                    @ApiResponse(responseCode = "401", description = "유효하지 않은 토큰"),
+                    @ApiResponse(responseCode = "404", description = "사용자 정보 없음")
+            }
+    )
     @PostMapping(value = "/update/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateProfileImage(HttpServletRequest request,
                                                 @RequestPart("file") MultipartFile file) {
