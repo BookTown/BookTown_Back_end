@@ -15,7 +15,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -67,7 +67,6 @@ public class UserController {
             @ApiResponse(responseCode = "401", description = "토큰 인증 실패")
         }
     )
-
     @DeleteMapping("/delete")
     public ResponseEntity<?> deleteUser(@AuthenticationPrincipal String userId, HttpServletRequest request, HttpServletResponse response) {
         String token = jwtTokenProvider.resolveToken(request);
@@ -118,35 +117,6 @@ public class UserController {
         return ResponseEntity.ok("로그아웃 완료");
     }
 
-
-    @Operation(
-        summary = "소셜 로그인 성공 콜백",
-        description = "OAuth2 로그인 성공 후 사용자 등록 및 JWT 토큰을 발급합니다.\n\n" +
-                     "AccessToken은 본문에 반환, RefreshToken은 HttpOnly 쿠키로 발급.",
-        responses = {
-            @ApiResponse(responseCode = "200", description = "토큰 발급 성공"),
-            @ApiResponse(responseCode = "400", description = "OAuth2 필수 정보 누락")
-        }
-    )
-    @GetMapping("/login/success")
-    public ResponseEntity<Map<String, String>> loginSuccess(@AuthenticationPrincipal OAuth2User oAuth2User, HttpServletResponse response) {
-        Map<String, Object> attributes = oAuth2User.getAttributes();
-        String accessToken = (String) attributes.get("accessToken");
-        String refreshToken = (String) attributes.get("refreshToken");
-
-        Cookie cookie = new Cookie("refreshToken", refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge((int) jwtTokenProvider.getRefreshExpirationTime() / 1000);
-        response.addCookie(cookie);
-
-        return ResponseEntity.ok(Map.of(
-                "grantType", "Bearer",
-                "accessToken", accessToken,
-                "refreshToken", "httpOnly"
-        ));
-    }
 
     @PatchMapping("/introduction")
     @Operation(summary = "자기소개 수정", description = "사용자의 자기소개를 수정합니다.")
