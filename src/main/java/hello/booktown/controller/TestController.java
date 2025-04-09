@@ -65,12 +65,6 @@ public class TestController {
         return ResponseEntity.ok("✅ 성공적으로 책이 등록되었습니다.");
     }
 
-    @PostMapping("/summarize")
-    public ResponseEntity<String> summarizeBook(@RequestBody SummarizeRequest request) {
-        bookService.summarizeBookByChunks(request.getBookId());
-        return ResponseEntity.ok("✅ 책 요약이 성공적으로 완료되었습니다.");
-    }
-
     @GetMapping("/{bookId}")
     public ResponseEntity<BookResponse> getBook(@PathVariable Long bookId) {
         BookResponse response = bookService.getBookById(bookId);
