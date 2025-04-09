@@ -1,11 +1,19 @@
 package hello.booktown.controller;
 
+import hello.booktown.domain.Book;
+import hello.booktown.dto.GutendexRequest;
+import hello.booktown.service.BookService;
 import io.swagger.v3.oas.annotations.Operation;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/book")
 public class BookController {
+
+    private final BookService bookService;
 
     @Operation(summary = "책 랜덤 조회", description = "메인 화면에 위치하는 랜덤 책을 조회합니다.")
     @GetMapping("/banner")
@@ -42,4 +50,12 @@ public class BookController {
     public void getBookInfo() {
 
     }
+
+    @Operation(summary = "책 등록 하기", description = "Gutendex API를 사용해 책의 정보를 불러와 DB에 저장합니다.")
+    @PostMapping("/register")
+    public ResponseEntity<String> registerBook(@RequestBody GutendexRequest request) {
+        bookService.saveBookFromGutenberg(request.getGutenbergId());
+        return ResponseEntity.ok("✅ 성공적으로 책이 등록되었습니다.");
+    }
+
 }

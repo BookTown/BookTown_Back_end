@@ -1,5 +1,9 @@
 package hello.booktown.controller;
 
+import hello.booktown.dto.BookResponse;
+import hello.booktown.dto.GutendexRequest;
+import hello.booktown.dto.SummarizeRequest;
+import hello.booktown.service.BookService;
 import hello.booktown.service.StabilityAIService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -19,10 +23,12 @@ public class TestController {
 
     private final ChatClient chatClient;
     private StabilityAIService stabilityAIService;
+    private final BookService bookService;
 
-    public TestController(ChatClient.Builder chatClientBuilder, StabilityAIService stabilityAIService) {
+    public TestController(ChatClient.Builder chatClientBuilder, StabilityAIService stabilityAIService, BookService bookService) {
         this.chatClient = chatClientBuilder.build();
         this.stabilityAIService = stabilityAIService;
+        this.bookService = bookService;
     }
 
     // 기존 AI 생성 요청 처리
@@ -34,10 +40,10 @@ public class TestController {
                 .content();
     }
 
-    @GetMapping("/generate-image")
-    public String generateImage(@RequestParam String prompt) {
-        return stabilityAIService.generateImage(prompt);
-    }
+//    @GetMapping("/generate-image")
+//    public String generateImage(@RequestParam String prompt) {
+//        return stabilityAIService.generateThumbnail(prompt);
+//    }
 
 
     // 테스트 엔드포인트 (배포 확인용)
@@ -50,5 +56,24 @@ public class TestController {
         System.out.println("테스트!!");
 
         return new ResponseEntity<>("OK", HttpStatus.OK);
+    }
+
+    // 책 등록
+    @PostMapping("/register")
+    public ResponseEntity<String> registerBook(@RequestBody GutendexRequest request) {
+        bookService.saveBookFromGutenberg(request.getGutenbergId());
+        return ResponseEntity.ok("✅ 성공적으로 책이 등록되었습니다.");
+    }
+
+    @PostMapping("/summarize")
+    public ResponseEntity<String> summarizeBook(@RequestBody SummarizeRequest request) {
+        bookService.summarizeBookByChunks(request.getBookId());
+        return ResponseEntity.ok("✅ 책 요약이 성공적으로 완료되었습니다.");
+    }
+
+    @GetMapping("/{bookId}")
+    public ResponseEntity<BookResponse> getBook(@PathVariable Long bookId) {
+        BookResponse response = bookService.getBookById(bookId);
+        return ResponseEntity.ok(response);
     }
 }

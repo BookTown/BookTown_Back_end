@@ -1,6 +1,5 @@
 package hello.booktown.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -8,9 +7,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class StabilityAIService {
@@ -37,9 +34,9 @@ public class StabilityAIService {
         this.s3UploadService = s3UploadService;
     }
 
-    public String generateImage(String prompt) {
+    public String generateThumbnail(String prompt, String bookName) {
         try {
-            // 멀티파트 요청 바디 구성
+            // 이미지 요청 생성
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("prompt", prompt);
             body.add("style_preset", stylePreset);
@@ -48,7 +45,7 @@ public class StabilityAIService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-            headers.setAccept(List.of(MediaType.parseMediaType("image/*"))); // 정확히 image/*로 지정
+            headers.setAccept(List.of(MediaType.parseMediaType("image/*")));
             headers.set("Authorization", "Bearer " + apiKey);
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
@@ -62,9 +59,9 @@ public class StabilityAIService {
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 byte[] imageBytes = response.getBody();
-                String fileName = "image_" + System.currentTimeMillis() + ".jpg";
+                String fileName = "thumbnail_" + System.currentTimeMillis() + ".jpg";
 
-                return s3UploadService.uploadImage(imageBytes, fileName);
+                return s3UploadService.uploadBookThumbnail(imageBytes, fileName, bookName);
             } else {
                 return "Error: " + response.getStatusCode();
             }
