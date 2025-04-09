@@ -160,5 +160,25 @@ public class BookService {
                 .build();
     }
 
+    public Book getRandomBook() {
+        return bookRepository.findRandomBook().orElseThrow(() -> new RuntimeException("책이 없습니다"));
+    }
+
+    public List<Book> getLatestBooks() {
+        return bookRepository.findTop10ByOrderByCreatedAtDesc();
+    }
+
+    public List<Book> getTopLikedBooks() {
+        return bookRepository.findTop10ByOrderByLikesDesc();
+    }
+
+    public List<Book> getAllBooksByLikes() {
+        return bookRepository.findAllByOrderByLikesDesc();
+    }
+
+    public List<Book> getAllBooksByCreatedAt() {
+        return bookRepository.findAllByOrderByCreatedAtDesc();
+    }
+
 
 }

@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/book")
@@ -17,32 +19,32 @@ public class BookController {
 
     @Operation(summary = "책 랜덤 조회", description = "메인 화면에 위치하는 랜덤 책을 조회합니다.")
     @GetMapping("/banner")
-    public void getRandomBook() {
-
+    public ResponseEntity<Book> getRandomBook() {
+        return ResponseEntity.ok(bookService.getRandomBook());
     }
 
     @Operation(summary = "좋아요 순으로 책 조회", description = "좋아요 수를 기준으로 책을 조회합니다.")
     @GetMapping("/popular")
-    public void getPopularBooks() {
-
+    public ResponseEntity<List<Book>> getTopLikedBooks() {
+        return ResponseEntity.ok(bookService.getTopLikedBooks());
     }
 
     @Operation(summary = "좋아요 순으로 모든 책 조회", description = "좋아요 수를 기준으로 모든 책을 조회합니다.")
     @GetMapping("/popular/all")
-    public void getAllPopularBooks() {
-
+    public ResponseEntity<List<Book>> getAllBooksByLikes() {
+        return ResponseEntity.ok(bookService.getAllBooksByLikes());
     }
 
     @Operation(summary = "최근 등록된 책 조회", description = "최근에 등록된 책을 조회합니다.")
     @GetMapping("/recent")
-    public void getRecentBooks() {
-
+    public ResponseEntity<List<Book>> getLatestBooks() {
+        return ResponseEntity.ok(bookService.getLatestBooks());
     }
 
     @Operation(summary = "최근 등록된 모든 책 조회", description = "최근에 등록된 모든 책을 조회합니다.")
     @GetMapping("/recent/all")
-    public void getAllRecentBooks() {
-
+    public ResponseEntity<List<Book>> getAllBooksByCreatedAt() {
+        return ResponseEntity.ok(bookService.getAllBooksByCreatedAt());
     }
 
     @Operation(summary = "책 정보 조회", description = "책의 줄거리 보기나 퀴즈 풀기 선택지를 제공하는 책 정보 조회.")

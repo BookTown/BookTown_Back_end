@@ -13,7 +13,6 @@ public class Scene {
     @Id
     private String chapterId;
 
-    @Id
     @ManyToOne
     @JoinColumn(name = "book_id", nullable = false)
     private Book book;
