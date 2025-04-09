@@ -41,6 +41,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
 
             logger.info("AccessToken 생성 완료");
+            logger.info("AccessToken: " + accessToken);
             logger.info("RefreshToken 생성 완료");
 
             redisTemplate.opsForValue().set("RT:" + userId, refreshToken,
