@@ -58,7 +58,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
             logger.info("RefreshToken 쿠키 저장 완료");
 
-            String redirectUrl = "https://booktown.site/front/oauth/callback?accessToken=" + accessToken;
+            String redirectUrl = "https://booktown.site/oauth/callback?accessToken=" + accessToken;
             logger.info("프론트로 리디렉션: " + redirectUrl);
             response.sendRedirect(redirectUrl);
         } catch (Exception e) {

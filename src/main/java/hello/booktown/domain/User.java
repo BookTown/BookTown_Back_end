@@ -9,6 +9,7 @@ import lombok.*;
         @UniqueConstraint(columnNames = {"provider", "providerId"})
 })
 @Getter
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

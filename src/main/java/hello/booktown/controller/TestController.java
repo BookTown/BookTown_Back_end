@@ -1,12 +1,12 @@
 package hello.booktown.controller;
 
+import hello.booktown.service.StabilityAIService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +18,11 @@ import org.springframework.web.bind.annotation.*;
 public class TestController {
 
     private final ChatClient chatClient;
+    private StabilityAIService stabilityAIService;
 
-    TestController(ChatClient.Builder chatClientBuilder) {
+    public TestController(ChatClient.Builder chatClientBuilder, StabilityAIService stabilityAIService) {
         this.chatClient = chatClientBuilder.build();
+        this.stabilityAIService = stabilityAIService;
     }
 
     // 기존 AI 생성 요청 처리
@@ -30,6 +32,11 @@ public class TestController {
                 .user(userInput)
                 .call()
                 .content();
+    }
+
+    @GetMapping("/generate-image")
+    public String generateImage(@RequestParam String prompt) {
+        return stabilityAIService.generateImage(prompt);
     }
 
 

@@ -18,13 +18,3 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
 
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            redirect-uri: https://booktown.site/login/oauth2/code/google
-          kakao:
-            redirect-uri: https://booktown.site/login/oauth2/code/kakao
-          naver:
-            redirect-uri: https://booktown.site/login/oauth2/code/naver
