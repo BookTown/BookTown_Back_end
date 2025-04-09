@@ -169,11 +169,11 @@ public class BookService {
     }
 
     public List<Book> getTopLikedBooks() {
-        return bookRepository.findTop10ByOrderByLikesDesc();
+        return bookRepository.findTop10ByOrderByLikeCountDesc();
     }
 
     public List<Book> getAllBooksByLikes() {
-        return bookRepository.findAllByOrderByLikesDesc();
+        return bookRepository.findAllByOrderByLikeCountDesc();
     }
 
     public List<Book> getAllBooksByCreatedAt() {

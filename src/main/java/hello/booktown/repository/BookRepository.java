@@ -18,9 +18,10 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     List<Book> findTop10ByOrderByCreatedAtDesc();
 
     // 3. 좋아요 순 10개
-    List<Book> findTop10ByOrderByLikesDesc();
+    List<Book> findTop10ByOrderByLikeCountDesc();
 
-    List<Book> findAllByOrderByLikesDesc();
+
+    List<Book> findAllByOrderByLikeCountDesc();
 
     List<Book> findAllByOrderByCreatedAtDesc();
 
