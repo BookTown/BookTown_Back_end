@@ -15,7 +15,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -67,7 +67,6 @@ public class UserController {
             @ApiResponse(responseCode = "401", description = "토큰 인증 실패")
         }
     )
-
     @DeleteMapping("/delete")
     public ResponseEntity<?> deleteUser(@AuthenticationPrincipal String userId, HttpServletRequest request, HttpServletResponse response) {
         String token = jwtTokenProvider.resolveToken(request);
@@ -116,142 +115,6 @@ public class UserController {
 
         redisTemplate.opsForValue().set(token, "logout", expiration, TimeUnit.MILLISECONDS);
         return ResponseEntity.ok("로그아웃 완료");
-    }
-
-
-    @Operation(
-        summary = "소셜 로그인 성공 콜백",
-        description = "OAuth2 로그인 성공 후 사용자 등록 및 JWT 토큰을 발급합니다.\n\n" +
-                     "AccessToken은 본문에 반환, RefreshToken은 HttpOnly 쿠키로 발급.",
-        responses = {
-            @ApiResponse(responseCode = "200", description = "토큰 발급 성공"),
-            @ApiResponse(responseCode = "400", description = "OAuth2 필수 정보 누락")
-        }
-    )
-    @GetMapping("/login/success")
-    public ResponseEntity<Map<String, String>> loginSuccess(@AuthenticationPrincipal OAuth2User oAuth2User, HttpServletResponse response) {
-        Map<String, Object> attributes = oAuth2User.getAttributes();
-        String accessToken = (String) attributes.get("accessToken");
-        String refreshToken = (String) attributes.get("refreshToken");
-
-        Cookie cookie = new Cookie("refreshToken", refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge((int) jwtTokenProvider.getRefreshExpirationTime() / 1000);
-        response.addCookie(cookie);
-
-        return ResponseEntity.ok(Map.of(
-                "grantType", "Bearer",
-                "accessToken", accessToken,
-                "refreshToken", "httpOnly"
-        ));
-    }
-
-    @PatchMapping("/introduction")
-    @Operation(summary = "자기소개 수정", description = "사용자의 자기소개를 수정합니다.")
-    public ResponseEntity<?> updateIntroduction(@AuthenticationPrincipal String userId,
-                                                @RequestBody Map<String, String> body) {
-        String newIntro = body.get("introduction");
-        if (newIntro == null || newIntro.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("자기소개는 비워둘 수 없습니다.");
-        }
-
-        User user = userRepository.findById(Long.parseLong(userId))
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-        user.updateIntroduction(newIntro);
-        userRepository.save(user);
-
-        return ResponseEntity.ok("자기소개가 수정되었습니다.");
-    }
-
-    @PatchMapping("/username")
-    @Operation(summary = "이름 수정", description = "사용자의 이름을 수정합니다.")
-    public ResponseEntity<?> updateUsername(@AuthenticationPrincipal String userId,
-                                            @RequestBody Map<String, String> body) {
-        String newUsername = body.get("username");
-        if (newUsername == null || newUsername.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("이름은 비워둘 수 없습니다.");
-        }
-
-        User user = userRepository.findById(Long.parseLong(userId))
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-        user.updateUsername(newUsername);
-        userRepository.save(user);
-
-        return ResponseEntity.ok("이름이 수정되었습니다.");
-    }
-
-    @PatchMapping("/score")
-    @Operation(summary = "점수 수정", description = "사용자의 점수를 수정합니다.")
-    public ResponseEntity<?> updateScore(@AuthenticationPrincipal String userId,
-                                         @RequestBody Map<String, Long> body) {
-        Long newScore = body.get("score");
-        if (newScore == null || newScore < 0) {
-            return ResponseEntity.badRequest().body("점수는 0 이상이어야 합니다.");
-        }
-
-        User user = userRepository.findById(Long.parseLong(userId))
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-        user.updateScore(newScore);
-        userRepository.save(user);
-
-        return ResponseEntity.ok("점수가 수정되었습니다.");
-    }
-
-    @PatchMapping("/difficulty")
-    @Operation(summary = "퀴즈 난이도 수정", description = "사용자의 퀴즈 생성 기본 난이도를 수정합니다.")
-    public ResponseEntity<?> updateDifficulty(@AuthenticationPrincipal String userId,
-                                              @RequestBody Map<String, String> body) {
-        String difficultyStr = body.get("difficulty");
-        if (difficultyStr == null) {
-            return ResponseEntity.badRequest().body("난이도를 입력해주세요.");
-        }
-
-        Difficulty difficulty;
-        try {
-            difficulty = Difficulty.valueOf(difficultyStr.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("잘못된 난이도 값입니다. (easy, medium, hard 중 하나여야 합니다.)");
-        }
-
-        User user = userRepository.findById(Long.parseLong(userId))
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-        user.updateDifficulty(difficulty);
-        userRepository.save(user);
-
-        return ResponseEntity.ok("난이도가 수정되었습니다.");
-    }
-
-
-    @Operation(summary = "프로필 이미지 수정", description = "사용자의 프로필 이미지를 수정합니다.")
-    @PostMapping(value = "/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> updateProfileImage(HttpServletRequest request,
-                                                @RequestPart("file") MultipartFile file) {
-        String token = jwtTokenProvider.resolveToken(request);
-
-        if (token == null || !jwtTokenProvider.validateToken(token)) {
-            return ResponseEntity.status(401).body("유효하지 않은 토큰입니다.");
-        }
-
-        String userId = jwtTokenProvider.getUsernameFromToken(token);
-
-        if (file == null || file.isEmpty()) {
-            return ResponseEntity.badRequest().body("파일이 비어있습니다.");
-        }
-
-        User user = userRepository.findById(Long.parseLong(userId))
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-
-        String oldImageUrl = user.getProfileImage();
-        if (oldImageUrl != null && oldImageUrl.contains("profile/")) {
-            s3Uploader.delete(oldImageUrl);
-        }
-        String imageUrl = s3Uploader.upload(file);
-        user.setProfileImage(imageUrl);
-        userRepository.save(user);
-
-        return ResponseEntity.ok("프로필 이미지가 수정되었습니다.");
     }
 
 }
