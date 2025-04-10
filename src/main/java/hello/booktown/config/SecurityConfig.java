@@ -4,12 +4,14 @@ import hello.booktown.jwt.JwtAuthenticationFilter;
 import hello.booktown.oauth.CustomOAuth2UserService;
 import hello.booktown.oauth.OAuth2SuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.multipart.support.MultipartFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -33,7 +35,7 @@ public class SecurityConfig {
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(formLogin -> formLogin.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/users/**", "/oauth2/**", "/login/oauth2/code/**", "/swagger-ui/**", "/v3/api-docs/**", "/test/**", "/profile/**")
+                        .requestMatchers("/api/users/**", "/oauth2/**", "/login/oauth2/code/**", "/swagger-ui/**", "/v3/api-docs/**", "/test/**")
                         .permitAll()
                         .anyRequest().authenticated()
                 )
@@ -53,5 +55,13 @@ public class SecurityConfig {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("{ \"error\": \"인증이 필요합니다.\" }");
         };
+    }
+
+    @Bean
+    public FilterRegistrationBean<MultipartFilter> multipartFilter() {
+        FilterRegistrationBean<MultipartFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new MultipartFilter());
+        registrationBean.setOrder(0); // MultipartFilter가 제일 먼저 실행되도록
+        return registrationBean;
     }
 }
