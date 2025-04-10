@@ -67,9 +67,21 @@ public class JwtTokenProvider {
 
     public String resolveToken(HttpServletRequest request) {
         String bearer = request.getHeader("Authorization");
+        System.out.println("Authorization Header: " + bearer);
+
         if (bearer != null && bearer.startsWith("Bearer ")) {
-            return bearer.substring(7);
+            String token = bearer.substring(7);
+            System.out.println("추출된 토큰 (헤더): " + token);
+            return token;
         }
+
+        String paramToken = request.getParameter("accessToken");
+        if (paramToken != null) {
+            System.out.println("추출된 토큰 (쿼리 파라미터): " + paramToken);
+            return paramToken;
+        }
+
+        System.out.println("토큰 없음");
         return null;
     }
 
