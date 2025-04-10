@@ -1,7 +1,6 @@
 package hello.booktown.controller;
 
 import hello.booktown.domain.User;
-import hello.booktown.domain.enums.Difficulty;
 import hello.booktown.jwt.JwtTokenProvider;
 import hello.booktown.repository.UserRepository;
 import hello.booktown.util.S3Uploader;
@@ -12,14 +11,9 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Tag(name = "User API", description = "소셜 로그인, 사용자 정보, 로그아웃/회원탈퇴 API")

@@ -17,7 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @RestController
-@RequestMapping("/profile")
+@RequestMapping("api/profile")
 public class ProfileController {
 
 
