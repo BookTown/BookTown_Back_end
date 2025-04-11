@@ -37,12 +37,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ CORS 설정 추가
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(formLogin -> formLogin.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ✅ OPTIONS 허용
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/api/users/**",
                                 "/oauth2/**",
@@ -75,17 +75,17 @@ public class SecurityConfig {
     public FilterRegistrationBean<MultipartFilter> multipartFilter() {
         FilterRegistrationBean<MultipartFilter> registrationBean = new FilterRegistrationBean<>();
         registrationBean.setFilter(new MultipartFilter());
-        registrationBean.setOrder(0); // MultipartFilter가 제일 먼저 실행되도록
+        registrationBean.setOrder(0);
         return registrationBean;
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*")); // 또는 List.of("https://booktown.site") 로 제한 가능
+        config.setAllowedOrigins(List.of("https://booktown.site")); // 실제 배포 도메인만 허용
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true); // 쿠키 및 Authorization 허용
+        config.setAllowCredentials(true); // 쿠키 + 헤더 인증 허용
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
