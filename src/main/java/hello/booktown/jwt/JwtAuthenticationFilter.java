@@ -33,19 +33,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = jwtTokenProvider.resolveToken(request);
 
-        if (token != null && jwtTokenProvider.validateToken(token)) {
-            String isBlacklisted = redisTemplate.opsForValue().get(token);
+        // 토큰이 없거나 유효하지 않으면 다음 필터로 넘기기
+        if (token == null || !jwtTokenProvider.validateToken(token)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            if (!"logout".equals(isBlacklisted)) {
-                String username = jwtTokenProvider.getUsernameFromToken(token);
+        // Redis에 로그아웃 상태인지 확인
+        String isBlacklisted = redisTemplate.opsForValue().get(token);
+        if ("logout".equals(isBlacklisted)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-                if (username != null && username.matches("\\d+")) {
-                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                            username, null, Collections.emptyList());
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                }
-            }
+        // 유저 ID (username) 가져오기
+        String username = jwtTokenProvider.getUsernameFromToken(token);
+        if (username != null && username.matches("\\d+")) {
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
+            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
         }
 
         filterChain.doFilter(request, response);
