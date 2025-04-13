@@ -25,16 +25,29 @@ public class S3UploadService {
      * @param fileName 저장할 파일명 (예: image_1712468890000.jpg)
      * @return 업로드된 이미지의 S3 URL
      */
-    public String uploadImage(byte[] imageData, String fileName) {
-        InputStream inputStream = new ByteArrayInputStream(imageData);
+    public String uploadBookThumbnail(byte[] imageData, String fileName, String bookName) {
+        try {
+            // 책 이름을 안전한 S3 경로용 문자열로 변환 (예: "The Great Gatsby" → "the-great-gatsby")
+            String safeBookName = bookName.toLowerCase().replaceAll("[^a-z0-9]", "-");
 
-        ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setContentLength(imageData.length);
-        metadata.setContentType("image/jpeg");
+            // S3 경로 구성: "the-great-gatsby/thumbnail.jpg"
+            String key = safeBookName + "/" + fileName;
 
-        amazonS3Client.putObject(bucketName, fileName, inputStream, metadata);
+            InputStream inputStream = new ByteArrayInputStream(imageData);
 
-        return "https://" + bucketName + ".s3.amazonaws.com/" + fileName;
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(imageData.length);
+            metadata.setContentType("image/jpeg");
+
+            amazonS3Client.putObject(bucketName, key, inputStream, metadata);
+
+            return "https://" + bucketName + ".s3.amazonaws.com/" + key;
+        } catch (Exception e) {
+            // 에러가 발생했을 경우 예외 로깅 및 null 또는 커스텀 예외 반환
+            e.printStackTrace(); // 필요시 로깅 프레임워크로 대체
+            throw new RuntimeException("책 썸네일 업로드 실패", e);
+        }
     }
+
 }
 

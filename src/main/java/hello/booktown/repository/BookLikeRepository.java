@@ -1,5 +1,7 @@
 package hello.booktown.repository;
 
+import hello.booktown.domain.Book;
+import hello.booktown.domain.BookLike;
 import hello.booktown.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -7,6 +9,6 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByProviderAndProviderId(String provider, String providerId);
+public interface BookLikeRepository extends JpaRepository<BookLike, Long> {
+    Optional<BookLike> findByBookAndUser(Book book, User user);
 }
