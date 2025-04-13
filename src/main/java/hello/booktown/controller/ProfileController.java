@@ -75,7 +75,6 @@ public class ProfileController {
         if (dto.getUsername() != null) user.updateUsername(dto.getUsername());
         if (dto.getIntroduction() != null) user.updateIntroduction(dto.getIntroduction());
         if (dto.getScore() != null && dto.getScore() >= 0) user.updateScore(dto.getScore());
-        if (dto.getDifficulty() != null) user.updateDifficulty(dto.getDifficulty());
 
         userRepository.save(user);
         return ResponseEntity.ok("프로필 정보가 수정되었습니다.");
