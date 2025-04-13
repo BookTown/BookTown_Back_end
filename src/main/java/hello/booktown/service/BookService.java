@@ -1,17 +1,16 @@
 package hello.booktown.service;
 
 import hello.booktown.domain.Book;
-import hello.booktown.domain.Scene;
 import hello.booktown.dto.BookResponse;
 import hello.booktown.dto.GutendexResponse;
 import hello.booktown.repository.BookRepository;
-import hello.booktown.repository.SceneRepository;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -21,14 +20,12 @@ public class BookService {
     private final RestTemplate restTemplate;
     private final ChatClient chatClient; // GPT 요약용 커스텀 서비스
     private final BookRepository bookRepository;
-    private final SceneRepository sceneRepository;
     private final StabilityAIService stabilityAIService;
 
-    public BookService(RestTemplate restTemplate, ChatClient.Builder chatClientBuilder, BookRepository bookRepository, SceneRepository sceneRepository, StabilityAIService stabilityAIService) {
+    public BookService(RestTemplate restTemplate, ChatClient.Builder chatClientBuilder, BookRepository bookRepository,  StabilityAIService stabilityAIService) {
         this.restTemplate = restTemplate;
         this.chatClient = chatClientBuilder.build();
         this.bookRepository = bookRepository;
-        this.sceneRepository = sceneRepository;
         this.stabilityAIService = stabilityAIService;
     }
 
@@ -113,6 +110,20 @@ public class BookService {
 
     public List<Book> getAllBooksByCreatedAt() {
         return bookRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    public BookResponse getBookInfo(Long bookId) {
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 책을 찾을 수 없습니다."));
+
+        return BookResponse.builder()
+                .bookId(book.getBookId())
+                .title(book.getTitle())
+                .author(book.getAuthor())
+                .summaryUrl(book.getSummaryUrl())
+                .thumbnailUrl(book.getThumbnailUrl())
+                .likecount(book.getLikeCount())
+                .build();
     }
 
 

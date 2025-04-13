@@ -34,7 +34,7 @@ public class Book {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "book", cascade = CascadeType.ALL)
-    private List<Scene> scenes;
+    private List<BookSummary> scenes;
 
     @Column(nullable = false)
     private int likeCount = 0;

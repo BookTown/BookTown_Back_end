@@ -38,7 +38,7 @@ public class StabilityAIService {
         try {
             // 이미지 요청 생성
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("prompt", prompt);
+            body.add("prompts", prompt);
             body.add("style_preset", stylePreset);
             body.add("width", width);
             body.add("height", height);

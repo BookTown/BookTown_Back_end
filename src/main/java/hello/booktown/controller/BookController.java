@@ -1,6 +1,7 @@
 package hello.booktown.controller;
 
 import hello.booktown.domain.Book;
+import hello.booktown.dto.BookResponse;
 import hello.booktown.dto.GutendexRequest;
 import hello.booktown.service.BookService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,10 +48,14 @@ public class BookController {
         return ResponseEntity.ok(bookService.getAllBooksByCreatedAt());
     }
 
-    @Operation(summary = "책 정보 조회", description = "책의 줄거리 보기나 퀴즈 풀기 선택지를 제공하는 책 정보 조회.")
+    @Operation(
+            summary = "책 정보 조회",
+            description = "책의 줄거리 보기나 퀴즈 풀기 선택지를 제공하는 책 정보 조회."
+    )
     @GetMapping("/info")
-    public void getBookInfo() {
-
+    public ResponseEntity<BookResponse> getBookInfo(@RequestParam Long bookId) {
+        BookResponse response = bookService.getBookInfo(bookId);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "책 등록 하기", description = "Gutendex API를 사용해 책의 정보를 불러와 DB에 저장합니다.")
