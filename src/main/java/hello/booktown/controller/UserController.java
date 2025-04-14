@@ -1,6 +1,8 @@
 package hello.booktown.controller;
 
 import hello.booktown.domain.User;
+import hello.booktown.exception.CustomException;
+import hello.booktown.exception.ErrorCode;
 import hello.booktown.jwt.JwtTokenProvider;
 import hello.booktown.repository.UserRepository;
 import hello.booktown.util.S3Uploader;
@@ -14,6 +16,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.concurrent.TimeUnit;
 
 @Tag(name = "User API", description = "소셜 로그인, 사용자 정보, 로그아웃/회원탈퇴 API")
@@ -24,7 +27,6 @@ public class UserController {
     private final JwtTokenProvider jwtTokenProvider;
     private final StringRedisTemplate redisTemplate;
     private final UserRepository userRepository;
-
     private final S3Uploader s3Uploader;
 
     public UserController(JwtTokenProvider jwtTokenProvider,
@@ -37,36 +39,27 @@ public class UserController {
         this.s3Uploader = s3Uploader;
     }
 
-    @Operation(
-        summary = "내 정보 조회",
-        description = "현재 로그인한 사용자의 정보를 조회합니다.",
-        responses = {
-            @ApiResponse(responseCode = "200", description = "성공적으로 사용자 정보를 조회함"),
-            @ApiResponse(responseCode = "401", description = "인증되지 않은 사용자")
-        }
-    )
+    @Operation(summary = "내 정보 조회", description = "현재 로그인한 사용자의 정보를 조회합니다.")
     @GetMapping("/me")
     public ResponseEntity<?> getMyInfo(@AuthenticationPrincipal String userId) {
         Long id = Long.parseLong(userId);
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         return ResponseEntity.ok(user);
     }
 
-    @Operation(
-        summary = "회원 탈퇴",
-        description = "JWT 토큰을 기반으로 현재 로그인한 사용자를 삭제하고 로그아웃 처리합니다.",
-        responses = {
-            @ApiResponse(responseCode = "200", description = "회원 탈퇴 성공"),
-            @ApiResponse(responseCode = "401", description = "토큰 인증 실패")
-        }
-    )
+    @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자를 삭제하고 로그아웃 처리합니다.")
     @DeleteMapping("/delete")
-    public ResponseEntity<?> deleteUser(@AuthenticationPrincipal String userId, HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<?> deleteUser(@AuthenticationPrincipal String userId,
+                                        HttpServletRequest request,
+                                        HttpServletResponse response) {
         String token = jwtTokenProvider.resolveToken(request);
+
         if (token != null && jwtTokenProvider.validateToken(token)) {
             long expiration = jwtTokenProvider.getExpiration(token);
             redisTemplate.opsForValue().set(token, "logout", expiration, TimeUnit.MILLISECONDS);
+        } else {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
 
         redisTemplate.delete("RT:" + userId);
@@ -81,34 +74,26 @@ public class UserController {
         return ResponseEntity.ok("회원 탈퇴 및 로그아웃 완료");
     }
 
-    @Operation(
-        summary = "로그아웃",
-        description = "Redis에 AccessToken을 블랙리스트로 등록하여 로그아웃 처리합니다.",
-        responses = {
-            @ApiResponse(responseCode = "200", description = "로그아웃 완료"),
-            @ApiResponse(responseCode = "401", description = "토큰 인증 실패")
-        }
-    )
+    @Operation(summary = "로그아웃", description = "AccessToken을 블랙리스트로 등록하여 로그아웃 처리합니다.")
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@AuthenticationPrincipal String userId, HttpServletRequest request) {
         String token = jwtTokenProvider.resolveToken(request);
 
         if (token == null || !jwtTokenProvider.validateToken(token)) {
-            return ResponseEntity.status(401).body("유효하지 않은 토큰입니다.");
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
 
         String tokenUserId = jwtTokenProvider.getUsernameFromToken(token);
         if (!tokenUserId.equals(userId)) {
-            return ResponseEntity.status(401).body("토큰 사용자 정보가 일치하지 않습니다.");
+            throw new CustomException(ErrorCode.TOKEN_MISMATCH);
         }
 
         long expiration = jwtTokenProvider.getExpiration(token);
         if (expiration <= 0) {
-            return ResponseEntity.status(401).body("이미 만료된 토큰입니다.");
+            throw new CustomException(ErrorCode.TOKEN_EXPIRED);
         }
 
         redisTemplate.opsForValue().set(token, "logout", expiration, TimeUnit.MILLISECONDS);
         return ResponseEntity.ok("로그아웃 완료");
     }
-
 }
