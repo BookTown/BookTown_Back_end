@@ -58,7 +58,7 @@ public class BookService {
                 : null;
 
         // 2. 이미지 생성 프롬프트 준비
-        String imagePrompt = "Create a cute anime-style book cover with soft colors. Title: " + originalTitle;
+        String imagePrompt = "Draw an illustration of the main character of the book with a background that depicts the overall atmosphere of the story." + originalTitle;
 
         String textUrl = bookData.getFormats().entrySet().stream()
                 .filter(e -> e.getKey().contains("text/plain") && !e.getKey().contains(".zip"))
@@ -84,7 +84,7 @@ public class BookService {
                 .orElseThrow(() -> new RuntimeException("책을 찾을 수 없습니다."));
 
         return BookResponse.builder()
-                .bookId(book.getBookId())
+                .bookId(book.getId())
                 .title(book.getTitle())
                 .author(book.getAuthor())
                 .summaryUrl(book.getSummaryUrl())
@@ -117,7 +117,7 @@ public class BookService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 책을 찾을 수 없습니다."));
 
         return BookResponse.builder()
-                .bookId(book.getBookId())
+                .bookId(book.getId())
                 .title(book.getTitle())
                 .author(book.getAuthor())
                 .summaryUrl(book.getSummaryUrl())

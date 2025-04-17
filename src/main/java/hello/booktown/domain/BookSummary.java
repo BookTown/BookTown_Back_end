@@ -3,12 +3,13 @@ package hello.booktown.domain;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Data
 public class BookSummary {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue
     private Long id;
 
     @ManyToOne
@@ -18,7 +19,8 @@ public class BookSummary {
     private Book book;
 
     @Lob
-    private String summaryJson; // 10개 문단 요약을 JSON 배열로 저장
+    private String fullSummary;
 
-    private boolean isDefault; // 최초 자동 생성된 기본 요약인지 (관리자 요약 등)
+    @OneToMany(mappedBy = "bookSummary", cascade = CascadeType.ALL)
+    private List<SummaryScene> scenes = new ArrayList<>();
 }
