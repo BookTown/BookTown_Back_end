@@ -1,128 +1,123 @@
-//package hello.booktown.service;
-//
-//import hello.booktown.domain.Book;
-//import hello.booktown.domain.Scene;
-//import hello.booktown.repository.BookRepository;
-//import hello.booktown.repository.BookSummaryRepository;
-//import org.springframework.ai.chat.client.ChatClient;
-//import org.springframework.beans.factory.annotation.Value;
-//import org.springframework.core.io.Resource;
-//import org.springframework.stereotype.Service;
-//import org.springframework.util.FileCopyUtils;
-//import org.springframework.web.client.RestTemplate;
-//
-//import java.io.IOException;
-//import java.io.InputStreamReader;
-//import java.nio.charset.StandardCharsets;
-//import java.util.ArrayList;
-//import java.util.List;
-//import java.util.Map;
-//
-//@Service
-//public class SummaryService {
-//
-//    @Value("classpath:/prompts/summary-prompt.st")
-//    private Resource summaryPrompt;
-//
-//    private final RestTemplate restTemplate;
-//    private final ChatClient chatClient; // GPT 요약용 커스텀 서비스
-//    private final BookRepository bookRepository;
-//    private final BookSummaryRepository bookSummaryRepository;
-//    private final StabilityAIService stabilityAIService;
-//
-//    public SummaryService(RestTemplate restTemplate, ChatClient.Builder chatClientBuilder, BookRepository bookRepository, SceneRepository sceneRepository, BookSummaryRepository bookSummaryRepository, StabilityAIService stabilityAIService) {
-//        this.restTemplate = restTemplate;
-//        this.chatClient = chatClientBuilder.build();
-//        this.bookRepository = bookRepository;
-//        this.bookSummaryRepository = bookSummaryRepository;
-//        this.stabilityAIService = stabilityAIService;
-//    }
-//
-//    public void summarizeBookToSingleScene(Long bookId) {
-//        Book book = bookRepository.findById(bookId)
-//                .orElseThrow(() -> new RuntimeException("📚 책을 찾을 수 없습니다."));
-//
-//        // 책 전문 가져오기
-//        String fullText = restTemplate.getForObject(book.getSummaryUrl(), String.class);
-//
-//        // 전문을 2000자씩 청크 분할
-//        List<String> chunks = splitTextIntoChunks(fullText, 2000);
-//
-//        // 각 청크에 대해 GPT 요약
-//        List<String> summaries = new ArrayList<>();
-//        for (String chunk : chunks) {
-//            String prompt = buildPromptFromTemplate(chunk);
-//            String summary = chatClient.prompt(prompt).call().content().trim();
-//            summaries.add(summary);
-//        }
-//
-//        // 요약된 모든 내용을 기반으로 최종 10개 문단 생성
-//        String combined = String.join("\n\n", summaries);
-//        String finalPrompt = buildFinalPrompt(combined);
-//        String finalSummary = chatClient.prompt(finalPrompt).call().content().trim();
-//
-//        // 줄거리 10개 문단으로 분할
-//        String[] paragraphs = finalSummary.split("\\n\\n");
-//        List<Map<String, Object>> scenesList = new ArrayList<>();
-//
-//        for (int i = 0; i < paragraphs.length; i++) {
-//            Map<String, Object> sceneObj = new LinkedHashMap<>();
-//            sceneObj.put("chapter", "chapter-" + (i + 1));
-//            sceneObj.put("content", paragraphs[i].trim());
-//            sceneObj.put("illustrationUrl", null); // 필요시 Stability API 결과 저장
-//            scenesList.add(sceneObj);
-//        }
-//
-//        // JSON 직렬화 후 Scene에 저장
-//        Scene scene = new Scene();
-//        scene.setBook(book);
-//        scene.setChapterId("summary-all"); // 전체 요약 구분용
-//        scene.setContent(toJson(scenesList)); // @Lob 필드
-//        sceneRepository.save(scene);
-//    }
-//
-//    private List<String> splitTextIntoChunks(String text, int chunkSize) {
-//        List<String> chunks = new ArrayList<>();
-//        int length = text.length();
-//        for (int i = 0; i < length; i += chunkSize) {
-//            chunks.add(text.substring(i, Math.min(length, i + chunkSize)));
-//        }
-//        return chunks;
-//    }
-//
-//    private String buildPromptFromTemplate(String chunk) {
-//        try {
-//            String template = FileCopyUtils.copyToString(new InputStreamReader(
-//                    summaryPrompt.getInputStream(), StandardCharsets.UTF_8));
-//            return template.replace("{chunk}", chunk);
-//        } catch (Exception e) {
-//            throw new RuntimeException("📝 프롬프트 템플릿을 읽는 데 실패했습니다.", e);
-//        }
-//    }
-//
-//    private String buildFinalPrompt(String combinedSummaries) {
-//        return """
-//        당신은 책 내용을 교육적으로 요약하는 AI 어시스턴트입니다.
-//        다음은 책의 요약 내용입니다.
-//
-//        이를 바탕으로 책의 전체 줄거리를 10개의 문단으로 분할하여 작성해주세요.
-//        각 문단은 약 500자 분량으로 매우 구체적이고 길게 작성해야 하며, 줄거리만 보고도 원작을 충분히 이해할 수 있도록 서술형으로 작성합니다.
-//        말투는 "~합니다", "~했습니다" 식의 공손한 형태를 유지해주세요.
-//
-//        각 문단은 \\n\\n으로 구분해 주세요.
-//
-//        전체 요약 내용:
-//        %s
-//        """.formatted(combinedSummaries);
-//    }
-//
-//    private String toJson(List<Map<String, Object>> scenesList) {
-//        try {
-//            return new com.fasterxml.jackson.databind.ObjectMapper()
-//                    .writerWithDefaultPrettyPrinter()
-//                    .writeValueAsString(scenesList);
-//        } catch (Exception e) {
-//            throw new RuntimeException("❌ JSON 직렬화 실패", e);
-//        }
-//    }
-//}
+package hello.booktown.service;
+
+import hello.booktown.domain.Book;
+import hello.booktown.domain.BookSummary;
+import hello.booktown.domain.SummaryScene;
+import hello.booktown.domain.User;
+import hello.booktown.dto.SummarySceneResponse;
+import hello.booktown.repository.BookRepository;
+import hello.booktown.repository.BookSummaryRepository;
+import hello.booktown.repository.SummarySceneRepository;
+import hello.booktown.repository.UserRepository;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+
+
+@Service
+public class SummaryService {
+
+    private final BookRepository bookRepository;
+    private final BookSummaryRepository bookSummaryRepository;
+    private final SummarySceneRepository summarySceneRepository;
+    private final RestTemplate restTemplate;
+    private final ChatClient chatClient;
+    private final StabilityAIService stabilityAIService;
+    private final UserRepository userRepository;
+
+
+    public SummaryService(RestTemplate restTemplate,
+                          ChatClient.Builder chatClientBuilder,
+                          BookRepository bookRepository,
+                          BookSummaryRepository bookSummaryRepository,
+                          SummarySceneRepository summarySceneRepository,
+                          StabilityAIService stabilityAIService, UserRepository userRepository) {
+        this.restTemplate = restTemplate;
+        this.chatClient = chatClientBuilder.build();
+        this.bookRepository = bookRepository;
+        this.bookSummaryRepository = bookSummaryRepository;
+        this.summarySceneRepository = summarySceneRepository;
+        this.stabilityAIService = stabilityAIService;
+        this.userRepository = userRepository;
+    }
+
+    @Value("classpath:/prompts/summary-prompt.st")
+    private Resource summaryPromptResource;
+
+    public void summarizeBookForUser(Long userId, Long bookId) throws IOException {
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new RuntimeException("책을 찾을 수 없습니다."));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
+
+        String bookText = restTemplate.getForObject(book.getSummaryUrl(), String.class);
+        List<String> chunks = splitTextIntoChunks(bookText, 2000);
+
+        StringBuilder combined = new StringBuilder();
+        for (String chunk : chunks) {
+            String chunkPrompt = "다음 책 내용을 한국어로 요약해 주세요:\n\n" + chunk;
+            String chunkSummary = chatClient.prompt(chunkPrompt).call().content().trim();
+            combined.append(chunkSummary).append("\n\n");
+        }
+
+        String template = new String(summaryPromptResource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        String finalPrompt = template.replace("{{summary}}", combined.toString());
+
+        String fullSummary = chatClient.prompt(finalPrompt).call().content().trim();
+        String[] paragraphs = fullSummary.split("\\n\\n");
+
+        BookSummary bookSummary = new BookSummary();
+        bookSummary.setUser(user);
+        bookSummary.setBook(book);
+        bookSummary.setFullSummary(fullSummary);
+        bookSummaryRepository.save(bookSummary);
+
+        for (int i = 0; i < paragraphs.length; i++) {
+            String content = paragraphs[i].trim();
+            String imagePrompt = content + "\n\n위 내용을 묘사한 일러스트를 생성해 주세요.";
+            String imageUrl = stabilityAIService.generateSceneImage(imagePrompt, userId, book.getTitle(), i + 1);
+
+            SummaryScene scene = new SummaryScene();
+            scene.setBookSummary(bookSummary);
+            scene.setPageNumber(i + 1);
+            scene.setContent(content);
+            scene.setIllustrationUrl(imageUrl);
+
+            summarySceneRepository.save(scene);
+        }
+    }
+
+    private List<String> splitTextIntoChunks(String text, int chunkSize) {
+        List<String> chunks = new ArrayList<>();
+        for (int i = 0; i < text.length(); i += chunkSize) {
+            chunks.add(text.substring(i, Math.min(text.length(), i + chunkSize)));
+        }
+        return chunks;
+    }
+
+    public List<SummarySceneResponse> getSummaryScenes(Long userId, Long bookId) {
+        BookSummary bookSummary = bookSummaryRepository.findByUserIdAndBookId(userId, bookId)
+                .orElseThrow(() -> new RuntimeException("요약된 책 정보를 찾을 수 없습니다."));
+
+        List<SummaryScene> scenes = summarySceneRepository.findByBookSummary(bookSummary);
+
+        List<SummarySceneResponse> responseList = new ArrayList<>();
+        for (SummaryScene scene : scenes) {
+            responseList.add(new SummarySceneResponse(
+                    scene.getPageNumber(),
+                    scene.getContent(),
+                    scene.getIllustrationUrl()
+            ));
+        }
+
+        return responseList;
+    }
+
+}

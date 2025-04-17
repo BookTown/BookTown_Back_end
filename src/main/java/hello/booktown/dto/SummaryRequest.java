@@ -3,7 +3,7 @@ package hello.booktown.dto;
 import lombok.Data;
 
 @Data
-public class SummarizeRequest {
+public class SummaryRequest {
     private Long bookId;
 
 }
