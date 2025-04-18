@@ -99,4 +99,15 @@ public class JwtTokenProvider {
         return refreshExpirationTime;
     }
 
+    public Long getUserIdFromToken(String token) {
+        // JWT에서 userId를 추출하는 로직을 구현합니다.
+        Claims claims = Jwts.parser()
+                .setSigningKey(secretKey)  // secretKey를 사용하여 토큰 파싱
+                .parseClaimsJws(token)
+                .getBody();
+
+        return Long.valueOf(claims.get("userId", String.class));  // userId를 클레임에서 가져오기
+    }
+
+
 }

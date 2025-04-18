@@ -5,12 +5,16 @@ import hello.booktown.dto.BookResponse;
 import hello.booktown.dto.GutendexResponse;
 import hello.booktown.repository.BookRepository;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +32,9 @@ public class BookService {
         this.bookRepository = bookRepository;
         this.stabilityAIService = stabilityAIService;
     }
+
+    @Value("classpath:/prompts/thumbnail-prompt.st")
+    private Resource thumbnailPromptResource;
 
     //구텐베르크 책 ID를 통해 BookDB에 책 정보를 저장함
     public Book saveBookFromGutenberg(Long gutenbergId) {
@@ -57,9 +64,6 @@ public class BookService {
                 .trim()
                 : null;
 
-        // 2. 이미지 생성 프롬프트 준비
-        String imagePrompt = "Draw an illustration of the main character of the book with a background that depicts the overall atmosphere of the story." + originalTitle;
-
         String textUrl = bookData.getFormats().entrySet().stream()
                 .filter(e -> e.getKey().contains("text/plain") && !e.getKey().contains(".zip"))
                 .map(Map.Entry::getValue)
@@ -67,7 +71,17 @@ public class BookService {
                 .orElseThrow(() -> new RuntimeException("텍스트 URL을 찾을 수 없습니다."));
 
         // 3. 썸네일 생성 및 업로드 (여기서 translatedTitle 넘김)
-        String thumbnailUrl = stabilityAIService.generateThumbnail(imagePrompt, originalTitle); // 여기를 수정
+        String template;
+        try {
+            template = new String(thumbnailPromptResource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new RuntimeException("썸네일 프롬프트 템플릿을 읽을 수 없습니다.", e);
+        }
+
+        String imagePrompt = template.replace("$title$", originalTitle);
+
+        // 썸네일 생성 및 업로드
+        String thumbnailUrl = stabilityAIService.generateThumbnail(imagePrompt, originalTitle);
 
         // 4. Book 저장
         Book book = new Book();

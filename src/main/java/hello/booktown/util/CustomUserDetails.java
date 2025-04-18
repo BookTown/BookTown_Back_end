@@ -10,11 +10,16 @@ import java.util.List;
 
 @Getter
 public class CustomUserDetails implements UserDetails {
-    private Long userId;
-    private String email;
-    private String role;
 
-    // 생성자 등 생략
+    private final Long userId;
+    private final String email;
+    private final String role;
+
+    public CustomUserDetails(Long userId, String email, String role) {
+        this.userId = userId;
+        this.email = email;
+        this.role = role;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
