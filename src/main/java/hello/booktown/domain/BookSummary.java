@@ -1,5 +1,6 @@
 package hello.booktown.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -19,6 +20,7 @@ public class BookSummary {
 
     @ManyToOne
     @JoinColumn(name = "book_id")
+    @JsonBackReference
     private Book book;
 
     @OneToMany(mappedBy = "bookSummary", cascade = CascadeType.ALL)
