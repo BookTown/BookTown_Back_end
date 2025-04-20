@@ -13,8 +13,6 @@ import java.util.Collections;
 public class CustomUserDetails implements UserDetails {
 
     private final Long userId;
-    private final String email;
-    private final String role;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

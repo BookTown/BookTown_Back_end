@@ -2,6 +2,7 @@ package hello.booktown.oauth;
 
 import hello.booktown.domain.User;
 import hello.booktown.repository.UserRepository;
+import hello.booktown.util.CustomUserDetails;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -42,14 +43,19 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String email = Optional.ofNullable(extractEmail(provider, attributes))
                 .orElse(provider + "_" + providerId + "@booktown.local");
         String username = Optional.ofNullable(extractUsername(provider, attributes)).orElse("소셜사용자");
-        String profileImage = null; // 무조건 null 저장
+        String profileImage = null;
 
         User user = userRepository.findByProviderAndProviderId(provider, providerId)
                 .orElseGet(() -> userRepository.save(new User(email, provider, providerId, username, profileImage)));
 
+        // CustomUserDetails 생성
+        CustomUserDetails customUserDetails = new CustomUserDetails(user.getId(), user.getEmail(), "ROLE_USER");
 
+        // OAuth2User로 반환, CustomUserDetails 정보를 attributes에 포함
         Map<String, Object> userAttributes = new HashMap<>();
         userAttributes.put("userId", user.getId().toString());
+        userAttributes.put("email", user.getEmail());
+        userAttributes.put("role", "ROLE_USER"); // 이 역할 정보도 사용됨
 
         return new DefaultOAuth2User(
                 Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),
@@ -57,6 +63,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 "userId"
         );
     }
+
+
 
     private String extractProviderId(String provider, Map<String, Object> attributes) {
         try {
