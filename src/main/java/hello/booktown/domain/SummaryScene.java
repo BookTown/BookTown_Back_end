@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 public class SummaryScene {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne

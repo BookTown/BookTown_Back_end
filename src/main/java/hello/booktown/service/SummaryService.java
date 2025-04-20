@@ -59,8 +59,6 @@ public class SummaryService {
         // URL에서 리다이렉트를 따라가고 최종 텍스트를 가져오기
         String bookText = fetchBookText(book.getSummaryUrl());
 
-        System.out.println(bookText);
-
         // 텍스트를 청크로 나누기
         List<String> chunks = splitTextIntoChunks(bookText, 2000);
         String combinedSummary = summarizeChunks(chunks);
