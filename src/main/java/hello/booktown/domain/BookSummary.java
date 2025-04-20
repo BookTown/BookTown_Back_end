@@ -16,10 +16,8 @@ public class BookSummary {
     private User user;
 
     @ManyToOne
+    @JoinColumn(name = "book_id")
     private Book book;
-
-    @Lob
-    private String fullSummary;
 
     @OneToMany(mappedBy = "bookSummary", cascade = CascadeType.ALL)
     private List<SummaryScene> scenes = new ArrayList<>();

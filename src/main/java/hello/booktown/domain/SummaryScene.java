@@ -16,6 +16,7 @@ public class SummaryScene {
     private int pageNumber;
 
     @Lob
+    @Column(columnDefinition = "LONGTEXT")
     private String content;
 
     @Column(columnDefinition = "TEXT")

@@ -33,7 +33,6 @@ public class SceneController {
             @RequestParam Long bookId,
             HttpServletRequest request) throws IOException {
 
-        log.info("요청도달함");
 
         // JWT 토큰에서 userId 추출
         String token = jwtTokenProvider.resolveToken(request);
@@ -46,14 +45,8 @@ public class SceneController {
         if (userId == null) {
             throw new CustomException(ErrorCode.INVALID_TOKEN);  // 유효하지 않은 userId 처리
         }
-
-        try {
-            // 요약이 없다면 생성
-            summaryService.getSummaryScenes(Long.parseLong(userId), bookId);
-        } catch (RuntimeException e) {
-            // 요약이 없어서 예외가 발생하면 새로 생성
-            summaryService.summarizeBookForUser(Long.parseLong(userId), bookId);
-        }
+        System.out.println(userId + " " + bookId);
+        summaryService.summarizeBookForUser(Long.parseLong(userId), bookId);
 
         // 최종 요약 결과 반환
         List<SummarySceneResponse> summaryScenes = summaryService.getSummaryScenes(Long.parseLong(userId), bookId);
