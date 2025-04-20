@@ -9,10 +9,17 @@ import java.util.Collection;
 import java.util.Collections;
 
 @Getter
-@AllArgsConstructor
 public class CustomUserDetails implements UserDetails {
 
     private final Long userId;
+    private final String email;
+    private final String role;
+
+    public CustomUserDetails(Long userId, String email, String role) {
+        this.userId = userId;
+        this.email = email;
+        this.role = role;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -31,21 +38,21 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return true; // 계정 만료되지 않음
+        return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true; // 계정 잠기지 않음
+        return true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true; // 자격 증명 만료되지 않음
+        return true;
     }
 
     @Override
     public boolean isEnabled() {
-        return true; // 항상 활성화
+        return true;
     }
 }

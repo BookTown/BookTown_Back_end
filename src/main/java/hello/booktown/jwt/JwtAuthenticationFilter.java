@@ -48,7 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String userId = jwtTokenProvider.getUsernameFromToken(token);
         if (userId != null && userId.matches("\\d+")) {
             Long parsedUserId = Long.parseLong(userId);
-            CustomUserDetails customUserDetails = new CustomUserDetails(parsedUserId);
+            CustomUserDetails customUserDetails = new CustomUserDetails(parsedUserId, "unknown@booktown.local", "ROLE_USER");
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
