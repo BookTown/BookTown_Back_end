@@ -13,6 +13,8 @@ import java.util.Collections;
 public class CustomUserDetails implements UserDetails {
 
     private final Long userId;
+    private final String email;
+    private final String role;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -49,4 +51,3 @@ public class CustomUserDetails implements UserDetails {
         return true; // 항상 활성화
     }
 }
-
