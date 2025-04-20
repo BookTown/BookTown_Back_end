@@ -5,6 +5,7 @@ import hello.booktown.exception.CustomException;
 import hello.booktown.exception.ErrorCode;
 import hello.booktown.jwt.JwtTokenProvider;
 import hello.booktown.repository.UserRepository;
+import hello.booktown.util.CustomUserDetails;
 import hello.booktown.util.S3Uploader;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,11 +42,12 @@ public class UserController {
 
     @Operation(summary = "내 정보 조회", description = "현재 로그인한 사용자의 정보를 조회합니다.")
     @GetMapping("/me")
-    public ResponseEntity<?> getMyInfo(@AuthenticationPrincipal String userId) {
-        Long id = Long.parseLong(userId);
+    public ResponseEntity<?> getMyInfo(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long id = userDetails.getUserId();
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         return ResponseEntity.ok(user);
+
     }
 
     @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자를 삭제하고 로그아웃 처리합니다.")

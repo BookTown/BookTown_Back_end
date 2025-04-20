@@ -13,11 +13,11 @@ public class BookLike {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long likeId;
 
-    @ManyToOne
-    @JoinColumn(name = "id", nullable = false)
-    private User user;
-
-    @ManyToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "book_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "book_id")
     private Book book;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 }

@@ -16,7 +16,7 @@ public class LikeController {
     private final LikeService likeService;
 
     @Operation(summary = "책에 하트 설정", description = "사용자가 책에 하트를 눌러 관심 책으로 설정 및 해제합니다.")
-    @PostMapping("/{bookId}/like")
+    @PostMapping("/{bookId}")
     public ResponseEntity<Boolean> toggleLike(
             @PathVariable Long bookId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
