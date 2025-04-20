@@ -1,5 +1,6 @@
 package hello.booktown.domain;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -21,5 +22,6 @@ public class BookSummary {
     private Book book;
 
     @OneToMany(mappedBy = "bookSummary", cascade = CascadeType.ALL)
+    @JsonManagedReference
     private List<SummaryScene> scenes = new ArrayList<>();
 }

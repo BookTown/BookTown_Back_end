@@ -1,5 +1,6 @@
 package hello.booktown.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -11,6 +12,7 @@ public class SummaryScene {
     private Long id;
 
     @ManyToOne
+    @JsonBackReference
     private BookSummary bookSummary;
 
     private int pageNumber;
