@@ -9,7 +9,6 @@ import hello.booktown.util.CustomUserDetails;
 import hello.booktown.util.S3Uploader;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -47,14 +46,14 @@ public class UserController {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         return ResponseEntity.ok(user);
-
     }
 
     @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자를 삭제하고 로그아웃 처리합니다.")
     @DeleteMapping("/delete")
-    public ResponseEntity<?> deleteUser(@AuthenticationPrincipal String userId,
+    public ResponseEntity<?> deleteUser(@AuthenticationPrincipal CustomUserDetails userDetails,
                                         HttpServletRequest request,
                                         HttpServletResponse response) {
+        Long userId = userDetails.getUserId();
         String token = jwtTokenProvider.resolveToken(request);
 
         if (token != null && jwtTokenProvider.validateToken(token)) {
@@ -72,13 +71,15 @@ public class UserController {
         expiredCookie.setHttpOnly(true);
         response.addCookie(expiredCookie);
 
-        userRepository.deleteById(Long.parseLong(userId));
+        userRepository.deleteById(userId);
         return ResponseEntity.ok("회원 탈퇴 및 로그아웃 완료");
     }
 
     @Operation(summary = "로그아웃", description = "AccessToken을 블랙리스트로 등록하여 로그아웃 처리합니다.")
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@AuthenticationPrincipal String userId, HttpServletRequest request) {
+    public ResponseEntity<?> logout(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                    HttpServletRequest request) {
+        Long userId = userDetails.getUserId();
         String token = jwtTokenProvider.resolveToken(request);
 
         if (token == null || !jwtTokenProvider.validateToken(token)) {
@@ -86,7 +87,7 @@ public class UserController {
         }
 
         String tokenUserId = jwtTokenProvider.getUsernameFromToken(token);
-        if (!tokenUserId.equals(userId)) {
+        if (!tokenUserId.equals(userId.toString())) {
             throw new CustomException(ErrorCode.TOKEN_MISMATCH);
         }
 
