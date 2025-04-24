@@ -118,6 +118,43 @@ public class ProfileController {
         return ResponseEntity.ok("프로필 이미지가 수정되었습니다.");
     }
 
+    @Operation(
+            summary = "프로필 이미지 삭제",
+            description = "사용자가 자신의 프로필 이미지를 삭제하고 null로 초기화합니다.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "프로필 이미지 삭제 성공"),
+                    @ApiResponse(responseCode = "401", description = "유효하지 않은 토큰"),
+                    @ApiResponse(responseCode = "404", description = "사용자 정보 없음")
+            }
+    )
+    @DeleteMapping("/delete/image")
+    public ResponseEntity<?> deleteProfileImage(HttpServletRequest request) {
+        String contentType = request.getHeader("Content-Type");
+        log.info("Content-Type: {}", contentType);
+        String token = jwtTokenProvider.resolveToken(request);
+        log.info("Authorization Header: {}", request.getHeader("Authorization"));
+        log.info("추출된 토큰 (헤더): {}", token);
+
+        if (token == null || !jwtTokenProvider.validateToken(token)) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
+
+        String userId = jwtTokenProvider.getUsernameFromToken(token);
+        User user = userRepository.findById(Long.parseLong(userId))
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        String oldImageUrl = user.getProfileImage();
+        if (oldImageUrl != null && oldImageUrl.contains("profile/")) {
+            s3Uploader.delete(oldImageUrl);  // S3에서도 삭제
+        }
+
+        user.setProfileImage(null);  // DB 값 null로 초기화
+        userRepository.save(user);
+
+        return ResponseEntity.ok("프로필 이미지가 삭제되었습니다.");
+    }
+
+
     @Operation(summary = "사용자가 관심을 가진 책 조회", description = "사용자가 관심을 가진 책 리스트를 조회합니다.")
     @GetMapping("/{userId}/liked-books")
     public void getLikedBooks() {
@@ -128,3 +165,5 @@ public class ProfileController {
     public void requestBook() {
     }
 }
+
+
