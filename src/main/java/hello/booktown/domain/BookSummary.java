@@ -1,12 +1,8 @@
 package hello.booktown.domain;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Data
@@ -15,15 +11,12 @@ public class BookSummary {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    private User user;
-
-    @ManyToOne
-    @JoinColumn(name = "book_id")
+    @OneToOne
+    @JoinColumn(name = "book_id", nullable = false)
     @JsonBackReference
     private Book book;
 
-    @OneToMany(mappedBy = "bookSummary", cascade = CascadeType.ALL)
-    @JsonManagedReference
-    private List<SummaryScene> scenes = new ArrayList<>();
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String summary;  // ✅ 요약 내용 하나만 저장
 }
