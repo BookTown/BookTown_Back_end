@@ -49,14 +49,10 @@ public class S3UploadService {
         }
     }
 
-    public String uploadSceneImage(byte[] imageData, Long userId, String bookTitle, int sceneNumber) {
+    public String uploadSceneImage(byte[] imageData, Long userId, Long bookId, int sceneNumber) {
         try {
-            // 안전한 S3 경로용 문자열 변환
-            String safeBookTitle = bookTitle.toLowerCase().replaceAll("[^a-z0-9]", "-");
-
-            // 파일명 및 키 경로 생성
             String fileName = "scene-" + sceneNumber + ".jpg";
-            String key = userId + "/" + safeBookTitle + "/" + fileName;
+            String key = userId + "/" + bookId + "/" + fileName; // ✅ 수정: userId/bookId/scene-번호.jpg
 
             InputStream inputStream = new ByteArrayInputStream(imageData);
 
@@ -69,10 +65,11 @@ public class S3UploadService {
             return "https://" + bucketName + ".s3.amazonaws.com/" + key;
 
         } catch (Exception e) {
-            e.printStackTrace(); // 필요 시 로거로 대체
+            e.printStackTrace();
             throw new RuntimeException("씬 이미지 업로드 실패", e);
         }
     }
+
 
 }
 

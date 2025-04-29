@@ -74,9 +74,8 @@ public class StabilityAIService {
         }
     }
 
-    public String generateSceneImage(String prompt, Long userId, String bookTitle, int sceneNumber) {
+    public String generateSceneImage(String prompt, Long userId, Long bookId, int sceneNumber) {
         try {
-            // 이미지 요청 생성
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("prompt", prompt);
             body.add("style_preset", stylePreset);
@@ -91,25 +90,19 @@ public class StabilityAIService {
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
             ResponseEntity<byte[]> response = restTemplate.exchange(
-                    API_URL,
-                    HttpMethod.POST,
-                    requestEntity,
-                    byte[].class
-            );
+                    API_URL, HttpMethod.POST, requestEntity, byte[].class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 byte[] imageBytes = response.getBody();
-                String fileName = "scene-" + sceneNumber + ".jpg";
-
-                return s3UploadService.uploadSceneImage(imageBytes, userId, bookTitle, sceneNumber);
+                return s3UploadService.uploadSceneImage(imageBytes, userId, bookId, sceneNumber);
             } else {
                 return "Error: " + response.getStatusCode();
             }
-
         } catch (Exception e) {
             return "Exception occurred: " + e.getMessage();
         }
     }
+
 
 
 }
