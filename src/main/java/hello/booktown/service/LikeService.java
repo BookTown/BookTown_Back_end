@@ -3,13 +3,16 @@ package hello.booktown.service;
 import hello.booktown.domain.Book;
 import hello.booktown.domain.BookLike;
 import hello.booktown.domain.User;
+import hello.booktown.dto.BookResponse;
 import hello.booktown.repository.BookLikeRepository;
 import hello.booktown.repository.BookRepository;
 import hello.booktown.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +46,27 @@ public class LikeService {
             bookRepository.save(book);
             return true; // 좋아요 추가됨
         }
+    }
+
+    public List<BookResponse> getLikedBooksByUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
+
+        List<BookLike> likes = bookLikeRepository.findByUser(user);
+
+        return likes.stream()
+                .map(like -> {
+                    Book book = like.getBook();
+                    return BookResponse.builder()
+                            .bookId(book.getId())
+                            .title(book.getTitle())
+                            .author(book.getAuthor())
+                            .summaryUrl(book.getSummaryUrl())
+                            .thumbnailUrl(book.getThumbnailUrl())
+                            .likecount(book.getLikeCount())
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
 }
