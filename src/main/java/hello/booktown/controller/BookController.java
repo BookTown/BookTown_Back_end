@@ -53,9 +53,13 @@ public class BookController {
             description = "책의 줄거리 보기나 퀴즈 풀기 선택지를 제공하는 책 정보 조회."
     )
     @GetMapping("/info")
-    public ResponseEntity<BookResponse> getBookInfo(@RequestParam Long bookId) {
-        BookResponse response = bookService.getBookInfo(bookId);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<List<BookResponse>> getBookInfo(
+            @RequestParam(required = false) Long bookId,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String author
+    ) {
+        List<BookResponse> responses = bookService.getBookInfo(bookId, title, author);
+        return ResponseEntity.ok(responses);
     }
 
     @Operation(summary = "책 등록 하기", description = "Gutendex API를 사용해 책의 정보를 불러와 DB에 저장합니다.")
