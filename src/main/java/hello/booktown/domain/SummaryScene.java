@@ -11,7 +11,9 @@ public class SummaryScene {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // ✅ 외래 키 컬럼 명시 (중요)
     @ManyToOne
+    @JoinColumn(name = "book_summary_id", nullable = false)
     @JsonBackReference
     private BookSummary bookSummary;
 

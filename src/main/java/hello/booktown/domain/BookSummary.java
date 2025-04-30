@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Data
 public class BookSummary {
@@ -16,7 +19,6 @@ public class BookSummary {
     @JsonBackReference
     private Book book;
 
-    @Lob
-    @Column(columnDefinition = "LONGTEXT")
-    private String summary;  // ✅ 요약 내용 하나만 저장
+    @OneToMany(mappedBy = "bookSummary", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SummaryScene> scenes = new ArrayList<>();
 }

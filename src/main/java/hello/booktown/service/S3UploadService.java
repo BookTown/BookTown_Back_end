@@ -49,10 +49,10 @@ public class S3UploadService {
         }
     }
 
-    public String uploadSceneImage(byte[] imageData, Long userId, Long bookId, int sceneNumber) {
+    public String uploadSceneImage(byte[] imageData,  Long bookId, int sceneNumber) {
         try {
             String fileName = "scene-" + sceneNumber + ".jpg";
-            String key = userId + "/" + bookId + "/" + fileName; // ✅ 수정: userId/bookId/scene-번호.jpg
+            String key = bookId + "/" + fileName; // ✅ 수정: userId/bookId/scene-번호.jpg
 
             InputStream inputStream = new ByteArrayInputStream(imageData);
 

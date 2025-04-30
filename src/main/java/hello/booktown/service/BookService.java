@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static hello.booktown.repository.BookSpecification.titleContains;
+
 @Service
 public class BookService {
 
@@ -155,6 +157,21 @@ public class BookService {
                         .build())
                 .toList();
     }
+
+
+    public List<BookResponse> searchBooksByTitle(String query) {
+        return bookRepository.findAll(titleContains(query)).stream()
+                .map(book -> BookResponse.builder()
+                        .bookId(book.getId())
+                        .title(book.getTitle())
+                        .author(book.getAuthor())
+                        .summaryUrl(book.getSummaryUrl())
+                        .thumbnailUrl(book.getThumbnailUrl())
+                        .likecount(book.getLikeCount())
+                        .build())
+                .toList();
+    }
+
 
 
 }

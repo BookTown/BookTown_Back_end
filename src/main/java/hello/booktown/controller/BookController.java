@@ -69,4 +69,12 @@ public class BookController {
         return ResponseEntity.ok("✅ 성공적으로 책이 등록되었습니다.");
     }
 
+    @Operation(summary = "책 제목 검색", description = "책 제목에 포함된 키워드로 책을 검색합니다.")
+    @GetMapping("/search")
+    public ResponseEntity<List<BookResponse>> searchBooks(@RequestParam String query) {
+        List<BookResponse> results = bookService.searchBooksByTitle(query);
+        return ResponseEntity.ok(results);
+    }
+
+
 }

@@ -29,7 +29,7 @@ public class StabilityAIService {
     @Value("${spring.ai.stabilityai.image.options.style-preset}")
     private String stylePreset;
 
-    private static final String API_URL = "https://api.stability.ai/v2beta/stable-image/generate/ultra";
+    private static final String API_URL = "https://api.stability.ai/v2beta/stable-image/generate/sd3";
 
     public StabilityAIService(RestTemplate restTemplate, S3UploadService s3UploadService) {
         this.restTemplate = restTemplate;
@@ -74,7 +74,7 @@ public class StabilityAIService {
         }
     }
 
-    public String generateSceneImage(String prompt, Long userId, Long bookId, int sceneNumber) {
+    public String generateSceneImage(String prompt, Long bookId, int sceneNumber) {
         try {
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("prompt", prompt);
@@ -94,7 +94,7 @@ public class StabilityAIService {
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 byte[] imageBytes = response.getBody();
-                return s3UploadService.uploadSceneImage(imageBytes, userId, bookId, sceneNumber);
+                return s3UploadService.uploadSceneImage(imageBytes, bookId, sceneNumber);
             } else {
                 return "Error: " + response.getStatusCode();
             }
