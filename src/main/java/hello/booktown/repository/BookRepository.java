@@ -11,6 +11,9 @@ import java.util.Optional;
 @Repository
 public interface BookRepository extends JpaRepository<Book, Long> {
 
+    List<Book> findByTitleContainingIgnoreCase(String title);
+    List<Book> findByAuthorContainingIgnoreCase(String author);
+
     @Query(value = "SELECT * FROM books ORDER BY RAND() LIMIT 1", nativeQuery = true)
     Optional<Book> findRandomBook();
 

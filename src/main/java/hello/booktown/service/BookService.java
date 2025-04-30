@@ -3,6 +3,8 @@ package hello.booktown.service;
 import hello.booktown.domain.Book;
 import hello.booktown.dto.BookResponse;
 import hello.booktown.dto.GutendexResponse;
+import hello.booktown.exception.CustomException;
+import hello.booktown.exception.ErrorCode;
 import hello.booktown.repository.BookRepository;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +19,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class BookService {
@@ -126,18 +129,31 @@ public class BookService {
         return bookRepository.findAllByOrderByCreatedAtDesc();
     }
 
-    public BookResponse getBookInfo(Long bookId) {
-        Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 책을 찾을 수 없습니다."));
+    public List<BookResponse> getBookInfo(Long bookId, String title, String author) {
+        List<Book> books;
 
-        return BookResponse.builder()
-                .bookId(book.getId())
-                .title(book.getTitle())
-                .author(book.getAuthor())
-                .summaryUrl(book.getSummaryUrl())
-                .thumbnailUrl(book.getThumbnailUrl())
-                .likecount(book.getLikeCount())
-                .build();
+        if (bookId != null) {
+            Book book = bookRepository.findById(bookId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.BOOK_NOT_FOUND));
+            books = List.of(book);
+        } else if (title != null) {
+            books = bookRepository.findByTitleContainingIgnoreCase(title);
+        } else if (author != null) {
+            books = bookRepository.findByAuthorContainingIgnoreCase(author);
+        } else {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        return books.stream()
+                .map(book -> BookResponse.builder()
+                        .bookId(book.getId())
+                        .title(book.getTitle())
+                        .author(book.getAuthor())
+                        .summaryUrl(book.getSummaryUrl())
+                        .thumbnailUrl(book.getThumbnailUrl())
+                        .likecount(book.getLikeCount())
+                        .build())
+                .toList();
     }
 
 
