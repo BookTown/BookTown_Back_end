@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import hello.booktown.domain.*;
 import hello.booktown.domain.enums.*;
+import hello.booktown.dto.BulkQuizSubmissionRequest;
 import hello.booktown.dto.quizType.*;
 import hello.booktown.repository.*;
 import jakarta.transaction.Transactional;
@@ -52,7 +53,10 @@ public class QuizService {
         BookSummary summary = bookSummaryRepository.findByBookId(bookId)
                 .orElseThrow(() -> new RuntimeException("요약된 책 정보를 찾을 수 없습니다."));
 
-        List<Quiz> existing = quizRepository.findByBookSummaryAndQuestionType(summary, type);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
+
+        List<Quiz> existing = quizRepository.findByBookSummaryAndQuestionTypeAndUser(summary, type, user);
         if (!existing.isEmpty() && !forceCreate) {
             attachOptionsAndStripSummary(existing);
             return existing;
@@ -73,13 +77,13 @@ public class QuizService {
             try {
                 String prompt = buildQuizPrompt(scene.getContent(), type);
                 String response = chatClient.prompt(prompt).call().content();
-                saveQuizByType(summary, scene, response, type);
+                saveQuizByType(summary, user, scene, response, type);
             } catch (Exception e) {
                 throw new RuntimeException("퀴즈 생성 중 오류가 발생했습니다: " + e.getMessage(), e);
             }
         }
 
-        List<Quiz> created = quizRepository.findByBookSummaryAndQuestionType(summary, type);
+        List<Quiz> created = quizRepository.findByBookSummaryAndQuestionTypeAndUser(summary, type, user);
         attachOptionsAndStripSummary(created);
         return created;
     }
@@ -99,22 +103,22 @@ public class QuizService {
         }
     }
 
-    private void saveQuizByType(BookSummary summary, SummaryScene scene, String json, QuestionType type) {
+    private void saveQuizByType(BookSummary summary, User user, SummaryScene scene, String json, QuestionType type) {
         try {
             switch (type) {
-                case MULTIPLE_CHOICE -> saveMultipleChoiceQuiz(summary, json);
-                case TRUE_FALSE -> saveTrueFalseQuiz(summary, json);
-                case SHORT_ANSWER -> saveShortAnswerQuiz(summary, json);
+                case MULTIPLE_CHOICE -> saveMultipleChoiceQuiz(summary, user, json);
+                case TRUE_FALSE -> saveTrueFalseQuiz(summary, user, json);
+                case SHORT_ANSWER -> saveShortAnswerQuiz(summary, user, json);
             }
         } catch (Exception e) {
             throw new RuntimeException("퀴즈 저장 중 오류 발생: " + e.getMessage(), e);
         }
     }
 
-    private void saveMultipleChoiceQuiz(BookSummary summary, String json) throws JsonProcessingException {
+    private void saveMultipleChoiceQuiz(BookSummary summary, User user, String json) throws JsonProcessingException {
         MultipleChoiceQuizDto dto = objectMapper.readValue(json, MultipleChoiceQuizDto.class);
 
-        Quiz quiz = toEntity(summary, dto);
+        Quiz quiz = toEntity(summary, user, dto);
         quizRepository.save(quiz);
 
         List<QuizOption> options = new ArrayList<>();
@@ -124,24 +128,26 @@ public class QuizService {
             option.setIndex(i);
             option.setText(dto.getOptions().get(i));
             quizOptionRepository.save(option);
+            options.add(option);
         }
 
         quiz.setOptions(options);
     }
 
-    private void saveTrueFalseQuiz(BookSummary summary, String json) throws JsonProcessingException {
+    private void saveTrueFalseQuiz(BookSummary summary, User user, String json) throws JsonProcessingException {
         TrueFalseQuizDto dto = objectMapper.readValue(json, TrueFalseQuizDto.class);
-        quizRepository.save(toEntity(summary, dto));
+        quizRepository.save(toEntity(summary, user, dto));
     }
 
-    private void saveShortAnswerQuiz(BookSummary summary, String json) throws JsonProcessingException {
+    private void saveShortAnswerQuiz(BookSummary summary, User user, String json) throws JsonProcessingException {
         ShortAnswerQuizDto dto = objectMapper.readValue(json, ShortAnswerQuizDto.class);
-        quizRepository.save(toEntity(summary, dto));
+        quizRepository.save(toEntity(summary, user, dto));
     }
 
-    private Quiz toEntity(BookSummary summary, MultipleChoiceQuizDto dto) {
+    private Quiz toEntity(BookSummary summary, User user, MultipleChoiceQuizDto dto) {
         Quiz quiz = new Quiz();
         quiz.setBookSummary(summary);
+        quiz.setUser(user);
         quiz.setQuestionType(QuestionType.MULTIPLE_CHOICE);
         quiz.setDifficulty(Difficulty.valueOf(dto.getDifficulty()));
         quiz.setQuestion(dto.getQuestion());
@@ -150,9 +156,10 @@ public class QuizService {
         return quiz;
     }
 
-    private Quiz toEntity(BookSummary summary, TrueFalseQuizDto dto) {
+    private Quiz toEntity(BookSummary summary, User user, TrueFalseQuizDto dto) {
         Quiz quiz = new Quiz();
         quiz.setBookSummary(summary);
+        quiz.setUser(user);
         quiz.setQuestionType(QuestionType.TRUE_FALSE);
         quiz.setDifficulty(Difficulty.valueOf(dto.getDifficulty()));
         quiz.setQuestion(dto.getQuestion());
@@ -161,9 +168,10 @@ public class QuizService {
         return quiz;
     }
 
-    private Quiz toEntity(BookSummary summary, ShortAnswerQuizDto dto) {
+    private Quiz toEntity(BookSummary summary, User user, ShortAnswerQuizDto dto) {
         Quiz quiz = new Quiz();
         quiz.setBookSummary(summary);
+        quiz.setUser(user);
         quiz.setQuestionType(QuestionType.SHORT_ANSWER);
         quiz.setDifficulty(Difficulty.valueOf(dto.getDifficulty().toUpperCase()));
         quiz.setQuestion(dto.getQuestion());
@@ -203,8 +211,30 @@ public class QuizService {
         }
     }
 
-    public List<QuizOption> getOptionsForQuiz(Long quizId) {
-        Quiz quiz = quizRepository.findById(quizId).orElseThrow();
-        return quizOptionRepository.findByQuiz(quiz);
+    @Transactional
+    public List<Boolean> submitMultipleAnswers(Long userId, List<BulkQuizSubmissionRequest.QuizAnswer> answers) {
+        List<Boolean> results = new ArrayList<>();
+        User user = userRepository.findById(userId).orElseThrow();
+
+        for (BulkQuizSubmissionRequest.QuizAnswer qa : answers) {
+            Quiz quiz = quizRepository.findById(qa.getQuizId()).orElseThrow();
+            boolean isCorrect = quiz.getCorrectAnswer().equalsIgnoreCase(qa.getAnswer());
+
+            QuizSubmission submission = new QuizSubmission();
+            submission.setQuiz(quiz);
+            submission.setUser(user);
+            submission.setUserAnswer(qa.getAnswer());
+            submission.setCorrect(isCorrect);
+            submissionRepository.save(submission);
+
+            if (isCorrect) {
+                user.updateScore(user.getScore() + quiz.getScore());
+            }
+
+            results.add(isCorrect);
+        }
+
+        userRepository.save(user); // 한번만 저장
+        return results;
     }
 }

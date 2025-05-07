@@ -2,6 +2,7 @@ package hello.booktown.controller;
 
 import hello.booktown.domain.Quiz;
 import hello.booktown.domain.enums.QuestionType;
+import hello.booktown.dto.BulkQuizSubmissionRequest;
 import hello.booktown.jwt.JwtTokenProvider;
 import hello.booktown.service.QuizService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,12 +41,12 @@ public class QuizController {
         return ResponseEntity.ok(quizzes);
     }
 
-    @PostMapping("/submit")
-    public ResponseEntity<Boolean> submitQuiz(@RequestParam Long quizId,
-                                              @RequestParam String answer,
-                                              HttpServletRequest request) {
-        Long userId = Long.parseLong(jwtTokenProvider.getUsernameFromToken(jwtTokenProvider.resolveToken(request)));
-        boolean isCorrect = quizService.submitAnswer(userId, quizId, answer);
-        return ResponseEntity.ok(isCorrect);
+    @PostMapping("/submit/bulk")
+    public ResponseEntity<List<Boolean>> submitMultipleQuizzes(@RequestBody BulkQuizSubmissionRequest request,
+                                                               HttpServletRequest httpRequest) {
+        Long userId = Long.parseLong(jwtTokenProvider.getUsernameFromToken(jwtTokenProvider.resolveToken(httpRequest)));
+        List<Boolean> results = quizService.submitMultipleAnswers(userId, request.getAnswers());
+        return ResponseEntity.ok(results);
     }
+
 }

@@ -18,6 +18,9 @@ public class Quiz {
     @ManyToOne(fetch = FetchType.LAZY)
     private BookSummary bookSummary;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    private User user;
+
     @Enumerated(EnumType.STRING)
     private QuestionType questionType;
 
@@ -28,10 +31,8 @@ public class Quiz {
 
     private String correctAnswer;
 
-    private int score; // AI가 난이도 및 정답 기준으로 설정
+    private int score;
 
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL)
     private List<QuizOption> options = new ArrayList<>();
 }
-
-
