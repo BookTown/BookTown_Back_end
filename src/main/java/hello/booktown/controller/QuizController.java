@@ -3,6 +3,7 @@ package hello.booktown.controller;
 import hello.booktown.domain.Quiz;
 import hello.booktown.domain.enums.QuestionType;
 import hello.booktown.dto.BulkQuizSubmissionRequest;
+import hello.booktown.dto.QuizSubmissionDto;
 import hello.booktown.jwt.JwtTokenProvider;
 import hello.booktown.service.QuizService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,6 +47,16 @@ public class QuizController {
                                                                HttpServletRequest httpRequest) {
         Long userId = Long.parseLong(jwtTokenProvider.getUsernameFromToken(jwtTokenProvider.resolveToken(httpRequest)));
         List<Boolean> results = quizService.submitMultipleAnswers(userId, request.getAnswers());
+        return ResponseEntity.ok(results);
+    }
+
+    @PostMapping("/submit/batch")
+    public ResponseEntity<List<Boolean>> submitBatch(@RequestBody List<QuizSubmissionDto> submissions,
+                                                     HttpServletRequest request) {
+        Long userId = Long.parseLong(jwtTokenProvider.getUsernameFromToken(jwtTokenProvider.resolveToken(request)));
+        List<Boolean> results = submissions.stream()
+                .map(submission -> quizService.submitAnswer(userId, submission.getQuizId(), submission.getAnswer()))
+                .toList();
         return ResponseEntity.ok(results);
     }
 

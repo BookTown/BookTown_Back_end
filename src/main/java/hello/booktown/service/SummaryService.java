@@ -49,7 +49,9 @@ public class SummaryService {
     }
 
     public void summarizeBook(Long bookId) throws IOException {
-        if (bookSummaryRepository.existsByBookId(bookId)) return;
+        if (bookSummaryRepository.existsByBookId(bookId)) {
+            throw new RuntimeException("이미 해당 책에 대한 요약이 존재합니다.");
+        }
 
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new RuntimeException("책을 찾을 수 없습니다."));
@@ -61,6 +63,7 @@ public class SummaryService {
 
         saveScenesParallel(book, sceneSummaries);
     }
+
 
     private String fetchBookText(String url) throws IOException {
         Document doc = Jsoup.connect(url)
