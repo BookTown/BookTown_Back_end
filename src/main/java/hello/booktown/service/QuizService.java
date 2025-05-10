@@ -55,6 +55,14 @@ public class QuizService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
 
+        // ✅ 기존 퀴즈가 존재하면 그대로 반환
+        List<Quiz> existing = quizRepository.findByBookSummaryAndQuestionTypeAndUser(summary, type, user);
+        if (!existing.isEmpty()) {
+            attachOptionsAndStripSummary(existing);
+            return existing;
+        }
+
+        // ✅ 새로운 퀴즈 생성
         List<SummaryScene> scenes = sceneRepository.findByBookSummary(summary);
         if (scenes.size() < 10) {
             throw new IllegalStateException("씬이 부족하여 퀴즈를 생성할 수 없습니다. (10개 필요)");
@@ -75,6 +83,7 @@ public class QuizService {
         attachOptionsAndStripSummary(created);
         return created;
     }
+
 
     private void attachOptionsAndStripSummary(List<Quiz> quizzes) {
         for (Quiz quiz : quizzes) {
