@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import hello.booktown.domain.*;
 import hello.booktown.domain.enums.*;
-import hello.booktown.dto.BulkQuizSubmissionRequest;
 import hello.booktown.dto.quizType.*;
 import hello.booktown.repository.*;
 import jakarta.transaction.Transactional;
@@ -49,23 +48,12 @@ public class QuizService {
     private Resource quizPromptResource;
 
     @Transactional
-    public List<Quiz> createQuizzes(Long bookId, QuestionType type, Long userId, boolean forceCreate) {
+    public List<Quiz> createQuizzes(Long bookId, QuestionType type, Difficulty difficulty, Long userId) {
         BookSummary summary = bookSummaryRepository.findByBookId(bookId)
                 .orElseThrow(() -> new RuntimeException("요약된 책 정보를 찾을 수 없습니다."));
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
-
-        List<Quiz> existing = quizRepository.findByBookSummaryAndQuestionTypeAndUser(summary, type, user);
-        if (!existing.isEmpty() && !forceCreate) {
-            attachOptionsAndStripSummary(existing);
-            return existing;
-        }
-
-        if (!existing.isEmpty()) {
-            quizOptionRepository.deleteByQuizIn(existing);
-            quizRepository.deleteAll(existing);
-        }
 
         List<SummaryScene> scenes = sceneRepository.findByBookSummary(summary);
         if (scenes.size() < 10) {
@@ -75,7 +63,7 @@ public class QuizService {
         List<SummaryScene> selectedScenes = scenes.subList(0, 10);
         for (SummaryScene scene : selectedScenes) {
             try {
-                String prompt = buildQuizPrompt(scene.getContent(), type);
+                String prompt = buildQuizPrompt(scene.getContent(), type, difficulty);
                 String response = chatClient.prompt(prompt).call().content();
                 saveQuizByType(summary, user, scene, response, type);
             } catch (Exception e) {
@@ -200,41 +188,20 @@ public class QuizService {
         return isCorrect;
     }
 
-    private String buildQuizPrompt(String content, QuestionType type) {
+    private String buildQuizPrompt(String content, QuestionType type, Difficulty difficulty) {
         try {
             String template = new String(quizPromptResource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             return template
                     .replace("{{type}}", type.name())
+                    .replace("{{difficulty}}", difficulty.name())
                     .replace("{{content}}", content);
         } catch (IOException e) {
             throw new RuntimeException("퀴즈 프롬프트 읽기 실패", e);
         }
     }
 
-    @Transactional
-    public List<Boolean> submitMultipleAnswers(Long userId, List<BulkQuizSubmissionRequest.QuizAnswer> answers) {
-        List<Boolean> results = new ArrayList<>();
-        User user = userRepository.findById(userId).orElseThrow();
-
-        for (BulkQuizSubmissionRequest.QuizAnswer qa : answers) {
-            Quiz quiz = quizRepository.findById(qa.getQuizId()).orElseThrow();
-            boolean isCorrect = quiz.getCorrectAnswer().equalsIgnoreCase(qa.getAnswer());
-
-            QuizSubmission submission = new QuizSubmission();
-            submission.setQuiz(quiz);
-            submission.setUser(user);
-            submission.setUserAnswer(qa.getAnswer());
-            submission.setCorrect(isCorrect);
-            submissionRepository.save(submission);
-
-            if (isCorrect) {
-                user.updateScore(user.getScore() + quiz.getScore());
-            }
-
-            results.add(isCorrect);
-        }
-
-        userRepository.save(user); // 한번만 저장
-        return results;
+    public List<QuizOption> getOptionsForQuiz(Long quizId) {
+        Quiz quiz = quizRepository.findById(quizId).orElseThrow();
+        return quizOptionRepository.findByQuiz(quiz);
     }
 }

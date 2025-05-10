@@ -1,8 +1,7 @@
 package hello.booktown.controller;
 
 import hello.booktown.domain.Quiz;
-import hello.booktown.domain.enums.QuestionType;
-import hello.booktown.dto.BulkQuizSubmissionRequest;
+import hello.booktown.dto.QuizGenerationRequest;
 import hello.booktown.dto.QuizSubmissionDto;
 import hello.booktown.jwt.JwtTokenProvider;
 import hello.booktown.service.QuizService;
@@ -21,34 +20,31 @@ public class QuizController {
     private final QuizService quizService;
     private final JwtTokenProvider jwtTokenProvider;
 
-    @PostMapping("/generate/{bookId}")
-    public ResponseEntity<List<Quiz>> generateQuiz(@PathVariable Long bookId,
-                                                   @RequestParam QuestionType type,
-                                                   @RequestParam(defaultValue = "false") boolean forceCreate,
-                                                   HttpServletRequest request) {
-        String token = jwtTokenProvider.resolveToken(request);
+    @PostMapping("/generate")
+    public ResponseEntity<List<Quiz>> generateQuiz(@RequestBody QuizGenerationRequest request,
+                                                   HttpServletRequest httpRequest) {
+        String token = jwtTokenProvider.resolveToken(httpRequest);
         if (token == null || !jwtTokenProvider.validateToken(token)) {
             return ResponseEntity.status(401).build();
         }
 
         Long userId = Long.parseLong(jwtTokenProvider.getUsernameFromToken(token));
-        List<Quiz> quizzes = quizService.createQuizzes(bookId, type, userId, forceCreate);
 
-        // 퀴즈 엔티티만 반환 (BookSummary, Scene, Option 등 제거)
+        List<Quiz> quizzes = quizService.createQuizzes(
+                request.getBookId(),
+                request.getType(),
+                request.getDifficulty(),
+                userId
+        );
+
         quizzes.forEach(q -> {
-            q.setBookSummary(null);;
+            q.setBookSummary(null);
+            q.setUser(null);
         });
 
         return ResponseEntity.ok(quizzes);
     }
 
-    @PostMapping("/submit/bulk")
-    public ResponseEntity<List<Boolean>> submitMultipleQuizzes(@RequestBody BulkQuizSubmissionRequest request,
-                                                               HttpServletRequest httpRequest) {
-        Long userId = Long.parseLong(jwtTokenProvider.getUsernameFromToken(jwtTokenProvider.resolveToken(httpRequest)));
-        List<Boolean> results = quizService.submitMultipleAnswers(userId, request.getAnswers());
-        return ResponseEntity.ok(results);
-    }
 
     @PostMapping("/submit/batch")
     public ResponseEntity<List<Boolean>> submitBatch(@RequestBody List<QuizSubmissionDto> submissions,
@@ -59,5 +55,4 @@ public class QuizController {
                 .toList();
         return ResponseEntity.ok(results);
     }
-
 }
