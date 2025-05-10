@@ -180,6 +180,7 @@ public class QuizService {
     }
 
 
+    @Transactional
     public boolean submitAnswer(Long userId, Long quizId, String answer) {
         Quiz quiz = quizRepository.findById(quizId).orElseThrow();
         boolean isCorrect = quiz.getCorrectAnswer().equalsIgnoreCase(answer);

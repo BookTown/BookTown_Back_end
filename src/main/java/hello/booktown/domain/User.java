@@ -20,7 +20,6 @@ public class User {
         this.providerId = providerId;
         this.username = username;
         this.profileImage = profileImage;
-        this.difficulty = Difficulty.MEDIUM; // 기본값
         this.score = 0L; // 기본값
     }
 
@@ -38,9 +37,6 @@ public class User {
 
     private String profileImage;
 
-    @Enumerated(EnumType.STRING)
-    private Difficulty difficulty;
-
     private Long score;
 
     private String introduction;
@@ -51,10 +47,6 @@ public class User {
 
     public void updateUsername(String username) {
         this.username = username;
-    }
-
-    public void updateDifficulty(Difficulty difficulty) {
-        this.difficulty = difficulty;
     }
 
     public void updateScore(Long score) {
