@@ -1,21 +1,58 @@
 package hello.booktown.controller;
 
-import io.swagger.v3.oas.annotations.Operation;
+import hello.booktown.domain.Quiz;
+import hello.booktown.dto.QuizGenerationRequest;
+import hello.booktown.dto.QuizSubmissionDto;
+import hello.booktown.jwt.JwtTokenProvider;
+import hello.booktown.service.QuizService;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/quiz")
+@RequestMapping("/api/quiz")
+@RequiredArgsConstructor
 public class QuizController {
 
-    @Operation(summary = "퀴즈 생성", description = "주어진 책에 대해 퀴즈를 생성합니다. 퀴즈 유형을 선택할 수 있습니다.")
-    @PostMapping("/{bookName}/category")
-    public void createQuiz(@PathVariable String bookName, @RequestParam String category) {
-        // 구현 내용
+    private final QuizService quizService;
+    private final JwtTokenProvider jwtTokenProvider;
+
+    @PostMapping("/generate")
+    public ResponseEntity<List<Quiz>> generateQuiz(@RequestBody QuizGenerationRequest request,
+                                                   HttpServletRequest httpRequest) {
+        String token = jwtTokenProvider.resolveToken(httpRequest);
+        if (token == null || !jwtTokenProvider.validateToken(token)) {
+            return ResponseEntity.status(401).build();
+        }
+
+        Long userId = Long.parseLong(jwtTokenProvider.getUsernameFromToken(token));
+
+        List<Quiz> quizzes = quizService.createQuizzes(
+                request.getBookId(),
+                request.getType(),
+                request.getDifficulty(),
+                userId
+        );
+
+        quizzes.forEach(q -> {
+            q.setBookSummary(null);
+            q.setUser(null);
+        });
+
+        return ResponseEntity.ok(quizzes);
     }
 
-    @Operation(summary = "퀴즈 제출", description = "사용자가 퀴즈를 제출하고 채점 결과를 반환합니다.")
-    @PostMapping("/submit")
-    public void submitQuiz(@RequestBody String submission) {
-        // 구현 내용
+
+    @PostMapping("/submit/batch")
+    public ResponseEntity<List<Boolean>> submitBatch(@RequestBody List<QuizSubmissionDto> submissions,
+                                                     HttpServletRequest request) {
+        Long userId = Long.parseLong(jwtTokenProvider.getUsernameFromToken(jwtTokenProvider.resolveToken(request)));
+        List<Boolean> results = submissions.stream()
+                .map(submission -> quizService.submitAnswer(userId, submission.getQuizId(), submission.getAnswer()))
+                .toList();
+        return ResponseEntity.ok(results);
     }
 }

@@ -48,8 +48,10 @@ public class SummaryService {
         this.stabilityAIService = stabilityAIService;
     }
 
-    public void summarizeBook(Long bookId) throws IOException {
-        if (bookSummaryRepository.existsByBookId(bookId)) return;
+    public List<SummarySceneResponse> summarizeBook(Long bookId) throws IOException {
+        if (bookSummaryRepository.existsByBookId(bookId)) {
+            return getSummaryScenes(bookId);  // 이미 요약이 존재하면 반환
+        }
 
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new RuntimeException("책을 찾을 수 없습니다."));
@@ -60,7 +62,11 @@ public class SummaryService {
         List<String> sceneSummaries = summarizeInto10Scenes(fullSummary);
 
         saveScenesParallel(book, sceneSummaries);
+
+        return getSummaryScenes(bookId);  // 요약 완료 후 결과 반환
     }
+
+
 
     private String fetchBookText(String url) throws IOException {
         Document doc = Jsoup.connect(url)
