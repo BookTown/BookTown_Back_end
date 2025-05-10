@@ -149,9 +149,10 @@ public class QuizService {
         quiz.setDifficulty(Difficulty.valueOf(dto.getDifficulty()));
         quiz.setQuestion(dto.getQuestion());
         quiz.setCorrectAnswer(dto.getOptions().get(dto.getAnswerIndex()));
-        quiz.setScore(dto.getScore());
+        quiz.setScore(10);
         return quiz;
     }
+
 
     private Quiz toEntity(BookSummary summary, User user, TrueFalseQuizDto dto) {
         Quiz quiz = new Quiz();
@@ -161,9 +162,10 @@ public class QuizService {
         quiz.setDifficulty(Difficulty.valueOf(dto.getDifficulty()));
         quiz.setQuestion(dto.getQuestion());
         quiz.setCorrectAnswer(dto.getAnswer());
-        quiz.setScore(dto.getScore());
+        quiz.setScore(5);
         return quiz;
     }
+
 
     private Quiz toEntity(BookSummary summary, User user, ShortAnswerQuizDto dto) {
         Quiz quiz = new Quiz();
@@ -173,9 +175,10 @@ public class QuizService {
         quiz.setDifficulty(Difficulty.valueOf(dto.getDifficulty().toUpperCase()));
         quiz.setQuestion(dto.getQuestion());
         quiz.setCorrectAnswer(dto.getAnswer());
-        quiz.setScore(dto.getScore());
+        quiz.setScore(15);
         return quiz;
     }
+
 
     public boolean submitAnswer(Long userId, Long quizId, String answer) {
         Quiz quiz = quizRepository.findById(quizId).orElseThrow();
