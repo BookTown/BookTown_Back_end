@@ -48,9 +48,9 @@ public class SummaryService {
         this.stabilityAIService = stabilityAIService;
     }
 
-    public void summarizeBook(Long bookId) throws IOException {
+    public List<SummarySceneResponse> summarizeBook(Long bookId) throws IOException {
         if (bookSummaryRepository.existsByBookId(bookId)) {
-            throw new RuntimeException("이미 해당 책에 대한 요약이 존재합니다.");
+            return getSummaryScenes(bookId);  // 이미 요약이 존재하면 반환
         }
 
         Book book = bookRepository.findById(bookId)
@@ -62,7 +62,10 @@ public class SummaryService {
         List<String> sceneSummaries = summarizeInto10Scenes(fullSummary);
 
         saveScenesParallel(book, sceneSummaries);
+
+        return getSummaryScenes(bookId);  // 요약 완료 후 결과 반환
     }
+
 
 
     private String fetchBookText(String url) throws IOException {
