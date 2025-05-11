@@ -34,8 +34,8 @@ public class SummaryService {
     @Value("classpath:/prompts/summary-prompt.st")
     private Resource summaryPrompt;
 
-    @Value("classpath:/prompts/scene-prompt.st")
-    private Resource scenePrompt;
+    @Value("classpath:/prompts/diffusion-prompt.st")
+    private Resource diffusionPrompt;
 
     public SummaryService(RestTemplate restTemplate, ChatClient.Builder chatClientBuilder,
                           BookRepository bookRepository, BookSummaryRepository bookSummaryRepository,
@@ -116,10 +116,16 @@ public class SummaryService {
             int finalPageNumber = pageNumber;
             futures.add(CompletableFuture.supplyAsync(() -> {
                 try {
-                    String translationPrompt = "Translate the following Korean scene summary into fluent English. Return only the translated text, no explanation:\n\n" + content;
-                    String translated = chatClient.prompt(translationPrompt).call().content().trim();
-                    String scenePromptText = loadPromptTemplate(scenePrompt).replace("{{scene}}", translated);
-                    String imageUrl = stabilityAIService.generateSceneImage(scenePromptText, book.getId(), finalPageNumber);
+                    String diffusionPromptText = loadPromptTemplate(diffusionPrompt)
+                            .replace("{{scene}}", content);
+
+                    String generatedPrompt = chatClient.prompt(diffusionPromptText).call().content().trim();
+
+                    // DEBUG: 전달 프롬프트 확인용 → 이후 삭제 가능
+                    System.out.println("GPT → Diffusion 전달 프롬프트 (page " + finalPageNumber + "): " + generatedPrompt);
+
+                    String imageUrl = stabilityAIService.generateSceneImage(generatedPrompt, book.getId(), finalPageNumber);
+
                     return new SceneResult(finalPageNumber, content, imageUrl);
                 } catch (Exception e) {
                     return new SceneResult(finalPageNumber, content, null);
