@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: prod
+    active: local
 
   jpa:
     hibernate:
@@ -84,7 +84,7 @@ spring:
         options:
           width: 1024
           height: 512
-          style-preset: analog-film
+          style-preset: line-art
 
 jwt:
   secret: ${JWT_SECRET}
