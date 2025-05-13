@@ -33,6 +33,9 @@ public class Quiz {
 
     private int score;
 
+    @Column(length = 1000)
+    private String explanation;
+
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL)
     private List<QuizOption> options = new ArrayList<>();
 }

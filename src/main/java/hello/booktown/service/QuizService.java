@@ -55,14 +55,12 @@ public class QuizService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
 
-        // ✅ 기존 퀴즈가 존재하면 그대로 반환
         List<Quiz> existing = quizRepository.findByBookSummaryAndQuestionTypeAndUser(summary, type, user);
         if (!existing.isEmpty()) {
             attachOptionsAndStripSummary(existing);
             return existing;
         }
 
-        // ✅ 새로운 퀴즈 생성
         List<SummaryScene> scenes = sceneRepository.findByBookSummary(summary);
         if (scenes.size() < 10) {
             throw new IllegalStateException("씬이 부족하여 퀴즈를 생성할 수 없습니다. (10개 필요)");
@@ -83,7 +81,6 @@ public class QuizService {
         attachOptionsAndStripSummary(created);
         return created;
     }
-
 
     private void attachOptionsAndStripSummary(List<Quiz> quizzes) {
         for (Quiz quiz : quizzes) {
@@ -149,10 +146,10 @@ public class QuizService {
         quiz.setDifficulty(Difficulty.valueOf(dto.getDifficulty()));
         quiz.setQuestion(dto.getQuestion());
         quiz.setCorrectAnswer(dto.getOptions().get(dto.getAnswerIndex()));
-        quiz.setScore(10);
+        quiz.setScore(dto.getScore());
+        quiz.setExplanation(dto.getExplanation());
         return quiz;
     }
-
 
     private Quiz toEntity(BookSummary summary, User user, TrueFalseQuizDto dto) {
         Quiz quiz = new Quiz();
@@ -162,10 +159,10 @@ public class QuizService {
         quiz.setDifficulty(Difficulty.valueOf(dto.getDifficulty()));
         quiz.setQuestion(dto.getQuestion());
         quiz.setCorrectAnswer(dto.getAnswer());
-        quiz.setScore(5);
+        quiz.setScore(dto.getScore());
+        quiz.setExplanation(dto.getExplanation());
         return quiz;
     }
-
 
     private Quiz toEntity(BookSummary summary, User user, ShortAnswerQuizDto dto) {
         Quiz quiz = new Quiz();
@@ -175,10 +172,10 @@ public class QuizService {
         quiz.setDifficulty(Difficulty.valueOf(dto.getDifficulty().toUpperCase()));
         quiz.setQuestion(dto.getQuestion());
         quiz.setCorrectAnswer(dto.getAnswer());
-        quiz.setScore(15);
+        quiz.setScore(dto.getScore());
+        quiz.setExplanation(dto.getExplanation());
         return quiz;
     }
-
 
     @Transactional
     public boolean submitAnswer(Long userId, Long quizId, String answer) {
@@ -213,8 +210,4 @@ public class QuizService {
         }
     }
 
-    public List<QuizOption> getOptionsForQuiz(Long quizId) {
-        Quiz quiz = quizRepository.findById(quizId).orElseThrow();
-        return quizOptionRepository.findByQuiz(quiz);
-    }
 }
