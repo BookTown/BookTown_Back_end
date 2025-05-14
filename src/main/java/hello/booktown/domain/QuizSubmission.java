@@ -47,6 +47,7 @@ public class QuizSubmission {
                 .correctAnswer(quiz.getCorrectAnswer())
                 .isCorrect(this.isCorrect())
                 .score(quiz.getScore())
+                .explanation(this.quiz.getExplanation())
                 .options(options)
                 .build();
     }
