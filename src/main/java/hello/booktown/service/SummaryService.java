@@ -70,7 +70,7 @@ public class SummaryService {
 
         List<String> chunkSummaries = summarizeChunksAsync(bookText);
         String fullSummary = String.join("\n\n", chunkSummaries);
-        log.info("✅ summarizeChunksAsync 결과 총 요약 문자 수: {}", fullSummary.length());
+        log.info("summarizeChunksAsync 결과 총 요약 문자 수: {}", fullSummary.length());
 
         List<String> sceneSummaries = summarizeInto10Scenes(fullSummary);
 
@@ -96,7 +96,7 @@ public class SummaryService {
 
     private List<String> summarizeChunksAsync(String text) {
         List<String> chunks = splitTextIntoChunks(text, 8000);
-        log.info("✅ splitTextIntoChunks size: {}", chunks.size());
+        log.info("splitTextIntoChunks size: {}", chunks.size());
         ExecutorService executor = Executors.newFixedThreadPool(Math.min(chunks.size(), 10));
         List<CompletableFuture<String>> futures = new ArrayList<>();
 
@@ -106,7 +106,7 @@ public class SummaryService {
             futures.add(CompletableFuture.supplyAsync(() -> {
                 String prompt = "다음 내용을 최대한 짧고 간결하게 요약하되, 주요 인물, 사건, 배경 묘사는 포함시켜. 불필요한 문장은 최대한 제거해. 내용: " + chunk;
                 String result = chatClient.prompt(prompt).call().content().trim();
-                log.info("✅ 청크 {} 원본: {}자 → 요약: {}자", currentIndex, chunk.length(), result.length());
+                log.info("청크 {} 원본: {}자 → 요약: {}자", currentIndex, chunk.length(), result.length());
                 return result;
             }, executor));
         }
@@ -128,7 +128,7 @@ public class SummaryService {
                 .replace("{{sceneListJson}}", scenesJson);
         String result = chatClient.prompt(prompt).call().content().trim();
 
-        log.info("✅ 캐릭터 딕셔너리 추출 결과:\n{}", result);
+        log.info("캐릭터 딕셔너리 추출 결과:\n{}", result);
 
         return result;
     }
@@ -143,7 +143,7 @@ public class SummaryService {
                 .toList();
 
         String jsonArray = objectMapper.writeValueAsString(firstSentences);
-        log.info("✅ diffusion bulk 프롬프트에 전달된 firstSentences JSON:\n{}", jsonArray);
+        log.info("diffusion bulk 프롬프트에 전달된 firstSentences JSON:\n{}", jsonArray);
         String diffusionBulkPromptText = loadPromptTemplate(diffusionPrompt)
                 .replace("{{sceneListJson}}", jsonArray)
                 .replace("{{bookTitle}}", book.getTitle())
@@ -152,7 +152,7 @@ public class SummaryService {
         String bulkResult = chatClient.prompt(diffusionBulkPromptText).call().content().trim();
         bulkResult = bulkResult.replaceAll("```json|```", "").trim();
         List<String> diffusionPrompts = objectMapper.readValue(bulkResult, new TypeReference<>() {});
-        log.info("✅ GPT diffusion 프롬프트 10개 JSON 응답:\n{}", diffusionPrompts);
+        log.info("GPT diffusion 프롬프트 10개 JSON 응답:\n{}", diffusionPrompts);
 
         ExecutorService executor = Executors.newFixedThreadPool(5);
         List<CompletableFuture<SceneResult>> futures = new ArrayList<>();
