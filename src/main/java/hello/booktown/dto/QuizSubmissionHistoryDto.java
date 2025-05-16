@@ -13,6 +13,7 @@ public class QuizSubmissionHistoryDto {
     private String correctAnswer;
     private boolean isCorrect;
     private int score;
+    private String explanation;
     private List<String> options;
 
 }

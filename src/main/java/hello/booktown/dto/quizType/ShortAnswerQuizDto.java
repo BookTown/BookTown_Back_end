@@ -9,4 +9,5 @@ public class ShortAnswerQuizDto {
     private String question;
     private String answer;
     private int score;
+    private String explanation;
 }

@@ -12,4 +12,5 @@ public class MultipleChoiceQuizDto {
     private List<String> options;
     private int answerIndex;
     private int score;
+    private String explanation;
 }
