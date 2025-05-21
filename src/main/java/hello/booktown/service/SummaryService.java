@@ -104,7 +104,7 @@ public class SummaryService {
         for (String chunk : chunks) {
             int currentIndex = index++;
             futures.add(CompletableFuture.supplyAsync(() -> {
-                String prompt = "다음 내용을 최대한 짧고 간결하게 요약하되, 주요 인물, 사건, 배경 묘사는 포함시켜. 불필요한 문장은 최대한 제거해. 내용: " + chunk;
+                String prompt = "다음 내용을 최대한 짧고 간결하게 요약하되, 주요 인물들의 사건은 포함시켜. 불필요한 문장은 무조건 최대한 제거해. 내용: " + chunk;
                 String result = chatClient.prompt(prompt).call().content().trim();
                 log.info("청크 {} 원본: {}자 → 요약: {}자", currentIndex, chunk.length(), result.length());
                 return result;
