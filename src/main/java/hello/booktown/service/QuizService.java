@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import hello.booktown.domain.*;
 import hello.booktown.domain.enums.*;
+import hello.booktown.dto.QuizSubmissionDto;
 import hello.booktown.dto.quizType.*;
 import hello.booktown.repository.*;
 import jakarta.transaction.Transactional;
@@ -27,6 +28,7 @@ public class QuizService {
     private final UserRepository userRepository;
     private final ChatClient chatClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final QuizSubmissionGroupRepository quizSubmissionGroupRepository;
 
     public QuizService(SummarySceneRepository sceneRepository,
                        BookSummaryRepository bookSummaryRepository,
@@ -34,7 +36,7 @@ public class QuizService {
                        QuizOptionRepository quizOptionRepository,
                        QuizSubmissionRepository submissionRepository,
                        UserRepository userRepository,
-                       ChatClient.Builder chatClientBuilder) {
+                       ChatClient.Builder chatClientBuilder, QuizSubmissionGroupRepository quizSubmissionGroupRepository) {
         this.sceneRepository = sceneRepository;
         this.bookSummaryRepository = bookSummaryRepository;
         this.quizRepository = quizRepository;
@@ -42,6 +44,7 @@ public class QuizService {
         this.submissionRepository = submissionRepository;
         this.userRepository = userRepository;
         this.chatClient = chatClientBuilder.build();
+        this.quizSubmissionGroupRepository = quizSubmissionGroupRepository;
     }
 
     @Value("classpath:/prompts/quiz-prompt.st")
@@ -178,25 +181,45 @@ public class QuizService {
     }
 
     @Transactional
-    public boolean submitAnswer(Long userId, Long quizId, String answer) {
-        Quiz quiz = quizRepository.findById(quizId).orElseThrow();
-        boolean isCorrect = quiz.getCorrectAnswer().equalsIgnoreCase(answer);
+    public List<Boolean> submitBatch(Long userId, List<QuizSubmissionDto> submissions) {
+        User user = userRepository.findById(userId).orElseThrow();
+        Quiz quiz = quizRepository.findById(submissions.get(0).getQuizId()).orElseThrow();
+        Book book = quiz.getBookSummary().getBook();
 
-        QuizSubmission submission = new QuizSubmission();
-        submission.setQuiz(quiz);
-        submission.setUser(userRepository.findById(userId).orElseThrow());
-        submission.setUserAnswer(answer);
-        submission.setCorrect(isCorrect);
-        submissionRepository.save(submission);
+        int groupIndex = quizSubmissionGroupRepository.countByUserAndBook(user, book);
 
-        if (isCorrect) {
-            User user = submission.getUser();
-            user.updateScore(user.getScore() + quiz.getScore());
-            userRepository.save(user);
+        QuizSubmissionGroup group = new QuizSubmissionGroup();
+        group.setUser(user);
+        group.setBook(book);
+        group.setGroupIndex(groupIndex);
+        quizSubmissionGroupRepository.save(group);
+
+        List<Boolean> results = new ArrayList<>();
+
+        for (QuizSubmissionDto dto : submissions) {
+            Quiz q = quizRepository.findById(dto.getQuizId()).orElseThrow();
+            boolean isCorrect = q.getCorrectAnswer().equalsIgnoreCase(dto.getAnswer());
+
+            QuizSubmission submission = new QuizSubmission();
+            submission.setQuiz(q);
+            submission.setUserAnswer(dto.getAnswer());
+            submission.setCorrect(isCorrect);
+            submission.setSubmissionGroup(group);
+            submissionRepository.save(submission);
+
+            if (isCorrect) {
+                user.updateScore(user.getScore() + q.getScore());
+            }
+
+            results.add(isCorrect);
         }
 
-        return isCorrect;
+        userRepository.save(user);
+        return results;
     }
+
+
+
 
     private String buildQuizPrompt(String content, QuestionType type, Difficulty difficulty) {
         try {
