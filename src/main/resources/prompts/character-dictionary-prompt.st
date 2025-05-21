@@ -23,6 +23,7 @@ Strict rules:
 8. clothing_style 항목에는 반드시 historical period (예: "early 19th century Regency era style")를 포함하세요. 책의 시대적 배경에 따라 인물의 의상 시대를 명확히 설정하십시오.
 9. 반드시 "age_group" 항목을 추가하십시오. 값은 반드시 "young adult man", "middle-aged man", "young adult woman", "middle-aged woman" 중 하나로만 설정하십시오. 나이나 외모, 사회적 지위, 책 속 표현을 고려하여 가장 적절한 그룹을 판단하십시오.
 10. DO NOT describe any facial features (e.g. eyes, expression, face shape, skin tone). Only describe hairstyle, clothing, accessories, posture, and silhouette-relevant traits.
+11.	If a character is a non-human being (e.g., animal, mythical creature, symbolic entity), include a "type": "non-human" field at the top level. In such cases, you may omit "age_group" and use "species" and "role" instead of "appearance".
 
 Input:
 Book Title: {{bookTitle}}
