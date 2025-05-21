@@ -5,6 +5,7 @@ import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.texttospeech.v1.TextToSpeechSettings;
 import java.io.InputStream;
+import java.io.FileInputStream;
 import com.google.protobuf.ByteString;
 import hello.booktown.util.S3Uploader;
 import lombok.RequiredArgsConstructor;
@@ -23,45 +24,54 @@ public class TtsService {
     private final S3Uploader s3Uploader;
 
     public String generateAndUploadTts(String text, Long bookId, int pageNumber) {
-        try (InputStream credentialsStream = getClass().getClassLoader().getResourceAsStream("key/stt.json")) {
-            GoogleCredentials credentials = GoogleCredentials.fromStream(credentialsStream);
-            TextToSpeechSettings settings = TextToSpeechSettings.newBuilder()
-                    .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
-                    .build();
-
-            try (TextToSpeechClient textToSpeechClient = TextToSpeechClient.create(settings)) {
-                // 1. TTS 요청 생성
-                SynthesisInput input = SynthesisInput.newBuilder()
-                        .setText(text)
+        InputStream credentialsStream;
+        String credentialsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
+        try {
+            if (credentialsPath != null) {
+                credentialsStream = new FileInputStream(credentialsPath);
+            } else {
+                credentialsStream = getClass().getClassLoader().getResourceAsStream("key/stt.json");
+            }
+            try (credentialsStream) {
+                GoogleCredentials credentials = GoogleCredentials.fromStream(credentialsStream);
+                TextToSpeechSettings settings = TextToSpeechSettings.newBuilder()
+                        .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
                         .build();
 
-                VoiceSelectionParams voice = VoiceSelectionParams.newBuilder()
-                        .setLanguageCode("ko-KR")
-                        .setSsmlGender(SsmlVoiceGender.FEMALE)
-                        .build();
+                try (TextToSpeechClient textToSpeechClient = TextToSpeechClient.create(settings)) {
+                    // 1. TTS 요청 생성
+                    SynthesisInput input = SynthesisInput.newBuilder()
+                            .setText(text)
+                            .build();
 
-                AudioConfig audioConfig = AudioConfig.newBuilder()
-                        .setAudioEncoding(AudioEncoding.MP3)
-                        .build();
+                    VoiceSelectionParams voice = VoiceSelectionParams.newBuilder()
+                            .setLanguageCode("ko-KR")
+                            .setSsmlGender(SsmlVoiceGender.FEMALE)
+                            .build();
 
-                // 2. TTS 응답 받기
-                SynthesizeSpeechResponse response = textToSpeechClient.synthesizeSpeech(input, voice, audioConfig);
-                ByteString audioContents = response.getAudioContent();
+                    AudioConfig audioConfig = AudioConfig.newBuilder()
+                            .setAudioEncoding(AudioEncoding.MP3)
+                            .build();
 
-                // 3. 임시 파일로 저장
-                String fileName = "tts/book-" + bookId + "/scene-" + pageNumber + ".mp3";
-                File tempFile = File.createTempFile("tts-", ".mp3");
-                try (FileOutputStream out = new FileOutputStream(tempFile)) {
-                    out.write(audioContents.toByteArray());
+                    // 2. TTS 응답 받기
+                    SynthesizeSpeechResponse response = textToSpeechClient.synthesizeSpeech(input, voice, audioConfig);
+                    ByteString audioContents = response.getAudioContent();
+
+                    // 3. 임시 파일로 저장
+                    String fileName = "tts/book-" + bookId + "/scene-" + pageNumber + ".mp3";
+                    File tempFile = File.createTempFile("tts-", ".mp3");
+                    try (FileOutputStream out = new FileOutputStream(tempFile)) {
+                        out.write(audioContents.toByteArray());
+                    }
+
+                    // 4. S3에 업로드
+                    String url = s3Uploader.upload(tempFile, fileName);
+
+                    // 5. 임시 파일 삭제
+                    tempFile.delete();
+
+                    return url;
                 }
-
-                // 4. S3에 업로드
-                String url = s3Uploader.upload(tempFile, fileName);
-
-                // 5. 임시 파일 삭제
-                tempFile.delete();
-
-                return url;
             }
         } catch (IOException e) {
             throw new RuntimeException("TTS 생성 실패", e);
