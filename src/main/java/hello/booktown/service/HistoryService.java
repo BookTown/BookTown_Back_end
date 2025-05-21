@@ -3,6 +3,7 @@ package hello.booktown.service;
 import hello.booktown.domain.Book;
 import hello.booktown.domain.QuizSubmission;
 import hello.booktown.domain.QuizSubmissionGroup;
+import hello.booktown.dto.GroupedHistoryDto;
 import hello.booktown.dto.HistoryDetailResponseDto;
 import hello.booktown.dto.HistoryResponseDto;
 import hello.booktown.exception.CustomException;
@@ -14,7 +15,11 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class HistoryService {
@@ -23,31 +28,47 @@ public class HistoryService {
     private final QuizSubmissionGroupRepository groupRepository;
     private final UserRepository userRepository;
 
-    public List<HistoryResponseDto> getAllHistories(Long userId) {
+    public List<GroupedHistoryDto> getAllGroupedHistories(Long userId) {
         validateUser(userId);
 
-        // 해당 유저의 모든 퀴즈 제출 그룹 조회
         List<QuizSubmissionGroup> groups = groupRepository.findByUser_Id(userId);
 
-        return groups.stream().map(group -> {
-            Book book = group.getBook();
-            List<QuizSubmission> subs = group.getSubmissions();
+        // 그룹핑: 책 기준
+        Map<Book, List<QuizSubmissionGroup>> bookToGroups = groups.stream()
+                .collect(Collectors.groupingBy(QuizSubmissionGroup::getBook));
 
-            int score = subs.stream()
-                    .filter(QuizSubmission::isCorrect)
-                    .mapToInt(s -> s.getQuiz().getScore())
-                    .sum();
+        return bookToGroups.entrySet().stream().map(entry -> {
+            Book book = entry.getKey();
+            List<QuizSubmissionGroup> groupList = entry.getValue();
 
-            return new HistoryResponseDto(
-                    group.getId(),
-                    book.getId(),
-                    book.getTitle(),
-                    score,
-                    group.getSubmittedAt() != null ? group.getSubmittedAt().toString() : "",
-                    group.getGroupIndex()
-            );
+            List<HistoryResponseDto> histories = groupList.stream()
+                    .sorted(Comparator.comparingInt(QuizSubmissionGroup::getGroupIndex))
+                    .map(group -> {
+                        int score = group.getSubmissions().stream()
+                                .filter(QuizSubmission::isCorrect)
+                                .mapToInt(s -> s.getQuiz().getScore())
+                                .sum();
+
+                        return HistoryResponseDto.builder()
+                                .id(group.getId())
+                                .bookId(book.getId())
+                                .bookTitle(book.getTitle())
+                                .score(score)
+                                .submittedAt(group.getSubmittedAt() != null ? group.getSubmittedAt().toString() : "")
+                                .groupIndex(group.getGroupIndex())
+                                .build();
+                    }).toList();
+
+            return GroupedHistoryDto.builder()
+                    .bookId(book.getId())
+                    .title(book.getTitle())
+                    .author(book.getAuthor())
+                    .histories(histories)
+                    .build();
         }).toList();
     }
+
+
 
 
     public HistoryDetailResponseDto getHistoryDetail(Long userId, Long bookId, int index) {
