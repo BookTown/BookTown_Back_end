@@ -50,9 +50,8 @@ public class QuizController {
     public ResponseEntity<List<Boolean>> submitBatch(@RequestBody List<QuizSubmissionDto> submissions,
                                                      HttpServletRequest request) {
         Long userId = Long.parseLong(jwtTokenProvider.getUsernameFromToken(jwtTokenProvider.resolveToken(request)));
-        List<Boolean> results = submissions.stream()
-                .map(submission -> quizService.submitAnswer(userId, submission.getQuizId(), submission.getAnswer()))
-                .toList();
+        List<Boolean> results = quizService.submitBatch(userId, submissions);
         return ResponseEntity.ok(results);
     }
+
 }

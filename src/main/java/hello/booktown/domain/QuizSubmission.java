@@ -1,37 +1,30 @@
 package hello.booktown.domain;
 
-
 import hello.booktown.domain.enums.QuestionType;
 import hello.booktown.dto.QuizSubmissionHistoryDto;
 import jakarta.persistence.*;
 import lombok.Data;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
 @Data
 public class QuizSubmission {
+
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quiz_id")
+    @JoinColumn(name = "quiz_id", nullable = false)
     private Quiz quiz;
 
-    @ManyToOne
-    private User user;
-
-    @Column(name = "submitted_at")
-    private LocalDateTime submittedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.submittedAt = LocalDateTime.now();
-    }
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id", nullable = false)
+    private QuizSubmissionGroup submissionGroup;
 
     private String userAnswer;
+
     private boolean isCorrect;
 
     public QuizSubmissionHistoryDto toHistoryDto() {
@@ -43,11 +36,11 @@ public class QuizSubmission {
 
         return QuizSubmissionHistoryDto.builder()
                 .question(quiz.getQuestion())
-                .userAnswer(this.getUserAnswer())
+                .userAnswer(this.userAnswer)
                 .correctAnswer(quiz.getCorrectAnswer())
-                .isCorrect(this.isCorrect())
+                .isCorrect(this.isCorrect)
                 .score(quiz.getScore())
-                .explanation(this.quiz.getExplanation())
+                .explanation(quiz.getExplanation())
                 .options(options)
                 .build();
     }
