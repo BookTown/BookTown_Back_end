@@ -1,5 +1,6 @@
 package hello.booktown.controller;
 
+import hello.booktown.dto.GroupedHistoryDto;
 import hello.booktown.dto.HistoryDetailResponseDto;
 import hello.booktown.dto.HistoryResponseDto;
 import hello.booktown.service.HistoryService;
@@ -19,8 +20,8 @@ public class HistoryController {
 
     @Operation(summary = "전체 퀴즈 히스토리 조회", description = "사용자 전체 퀴즈 히스토리를 조회합니다. 퀴즈 결과와 책 정보를 포함합니다.")
     @GetMapping("/{userId}")
-    public ResponseEntity<List<HistoryResponseDto>> getAllHistory(@PathVariable Long userId) {
-        return ResponseEntity.ok(historyService.getAllHistories(userId));
+    public ResponseEntity<List<GroupedHistoryDto>> getAllHistory(@PathVariable Long userId) {
+        return ResponseEntity.ok(historyService.getAllGroupedHistories(userId));
     }
 
     @Operation(summary = "특정 책에 대한 퀴즈 히스토리 상세 조회", description = "해당 책에 대한 퀴즈 10개 제출 결과를 반환합니다.")
