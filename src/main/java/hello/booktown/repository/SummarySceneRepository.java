@@ -12,4 +12,8 @@ import java.util.Optional;
 @Repository
 public interface SummarySceneRepository extends JpaRepository<SummaryScene, Long> {
     List<SummaryScene> findByBookSummary(BookSummary bookSummary);
+
+    List<SummaryScene> findByBookSummaryIdOrderByPageNumberAsc(Long bookSummaryId);
+
+    SummaryScene findByBookSummaryIdAndPageNumber(Long bookSummaryId, int pageNumber);
 }

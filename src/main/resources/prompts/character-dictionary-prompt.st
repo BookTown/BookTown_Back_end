@@ -13,7 +13,10 @@ Strict rules:
 2. Describe clothing style, hairstyle, accessories(not cloth), and any distinctive features.
 3. Infer reasonable details based on the historical setting of the 10 scenes (from "{{sceneListJson}}") and the book title "{{bookTitle}}", only if not explicitly mentioned.
 4. Use consistent descriptions that can be reused in image generation to keep the character's appearance stable across scenes.
-4.1. Include every character that appears or acts in any of the 10 scenes, including unnamed or supporting roles such as servants, messengers, or townspeople. Do not limit to major or named characters only.
+4.1. Include every character that appears or acts in any of the 10 scenes. This includes:
+     	•	Unnamed or supporting human roles (e.g., servants, messengers, townspeople),
+     	•	Narratively significant non-human characters, such as animals or mythical beings that play an active or symbolic role (e.g., Moby Dick, a loyal dog, a war horse, a talking creature).
+     	•	Do not limit to only named or major human characters.
 5. DO NOT add extra explanations, only output a JSON object.
 6. The output MUST be valid JSON syntax parsable by JavaScript.
 7. DO NOT break JSON object syntax.
