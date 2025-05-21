@@ -25,5 +25,8 @@ public class SummaryScene {
 
     @Column(columnDefinition = "TEXT")
     private String illustrationUrl;
+
+    @Column(name = "audio_url", columnDefinition = "TEXT")
+    private String audioUrl;
 }
 

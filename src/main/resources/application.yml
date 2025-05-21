@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: prod
+    active: local
 
   jpa:
     hibernate:
@@ -70,6 +70,12 @@ spring:
         static: ${S3_REGION}
       stack:
         auto: false
+    gcp:
+      credentials:
+        location: classpath:key/stt.json
+      project-id: ${GCP_PROJECT_ID}
+      text-to-speech:
+        enabled: true
 
   ai:
     openai:

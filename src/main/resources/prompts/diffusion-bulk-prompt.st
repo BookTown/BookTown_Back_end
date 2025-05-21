@@ -10,7 +10,7 @@ You must enforce the following visual style and constraints across all 10 prompt
 	•	Entirely monochrome appearance with no color or grayscale
 	•	All characters must wear plain light-colored garments; avoid fully black clothing
 	•	Lighting must be soft and uniform
-	•	Perspective must always be medium-distance, from behind the character, with centered composition
+	•	Perspective must always be medium-distance, from behind the character.
 	•	The overall appearance must replicate 19th-century European storybook engravings from the UK, France, or Germany
 	•	Do not use any elements of digital art, anime, 3D rendering, comic book styles, or modern illustration
 
