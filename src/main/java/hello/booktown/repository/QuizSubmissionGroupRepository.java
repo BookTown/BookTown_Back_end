@@ -10,9 +10,6 @@ import java.util.Optional;
 
 public interface QuizSubmissionGroupRepository extends JpaRepository<QuizSubmissionGroup, Long> {
     int countByUserAndBook(User user, Book book);
-    List<QuizSubmissionGroup> findByUserIdAndBookId(Long userId, Long bookId);
     Optional<QuizSubmissionGroup> findByUserIdAndBookIdAndGroupIndex(Long userId, Long bookId, int groupIndex);
-    void deleteByUserIdAndBookIdAndGroupIndex(Long userId, Long bookId, int groupIndex);
-
     List<QuizSubmissionGroup> findByUser_Id(Long userId);
 }

@@ -15,6 +15,6 @@ public class HistoryResponseDto {
     private String bookTitle;
     private int score;
     private String submittedAt;
-    private int groupIndex;  // 그룹 번호도 포함하고 싶다면 추가
+    private int groupIndex;
+    private String quizType;
 }
-

@@ -12,4 +12,5 @@ public class GroupedHistoryDto {
     private String title;
     private String author;
     private List<HistoryResponseDto> histories;
+    private int totalScore;
 }
