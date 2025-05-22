@@ -3,7 +3,6 @@ package hello.booktown.service;
 import hello.booktown.domain.Book;
 import hello.booktown.domain.QuizSubmission;
 import hello.booktown.domain.QuizSubmissionGroup;
-import hello.booktown.domain.enums.QuestionType;
 import hello.booktown.dto.GroupedHistoryDto;
 import hello.booktown.dto.HistoryDetailResponseDto;
 import hello.booktown.dto.HistoryResponseDto;
@@ -19,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +35,8 @@ public class HistoryService {
 
         // 유저의 모든 퀴즈 제출 그룹 조회
         List<QuizSubmissionGroup> groups = groupRepository.findByUser_Id(userId);
+
+        AtomicInteger totalScore = new AtomicInteger();
 
         // 책 기준으로 그룹핑
         Map<Book, List<QuizSubmissionGroup>> bookToGroups = groups.stream()
@@ -57,7 +59,7 @@ public class HistoryService {
                                 .mapToInt(s -> s.getQuiz().getScore())
                                 .sum();
 
-
+                        totalScore.addAndGet(score);
 
                         // 퀴즈 유형 추출 (첫 번째 문제 기준)
                         String questionTypeLabel = submissions.stream()
@@ -90,6 +92,7 @@ public class HistoryService {
                     .bookId(book.getId())
                     .title(book.getTitle())
                     .author(book.getAuthor())
+                    .totalScore(totalScore.get())
                     .histories(histories)
                     .build();
         }).toList();
