@@ -24,6 +24,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.google.cloud.texttospeech.v1.SsmlVoiceGender;
+
 @Service
 public class SummaryService {
 
@@ -170,10 +172,11 @@ public class SummaryService {
             futures.add(CompletableFuture.supplyAsync(() -> {
                 try {
                     String imageUrl = stabilityAIService.generateSceneImage(generatedPrompt, book.getId(), finalPageNumber);
-                    String audioUrl = ttsService.generateAndUploadTts(content, book.getId(), finalPageNumber);
-                    return new SceneResult(finalPageNumber, content, imageUrl, audioUrl);
+                    String femaleAudioUrl = ttsService.generateAndUploadTts(content, book.getId(), finalPageNumber, SsmlVoiceGender.FEMALE);
+                    String maleAudioUrl = ttsService.generateAndUploadTts(content, book.getId(), finalPageNumber, SsmlVoiceGender.MALE);
+                    return new SceneResult(finalPageNumber, content, imageUrl, femaleAudioUrl, maleAudioUrl);
                 } catch (Exception e) {
-                    return new SceneResult(finalPageNumber, content, null, null);
+                    return new SceneResult(finalPageNumber, content, null, null, null);
                 }
             }, executor));
         }
@@ -186,7 +189,9 @@ public class SummaryService {
             scene.setPageNumber(sceneResult.pageNumber);
             scene.setContent(sceneResult.content);
             scene.setIllustrationUrl(sceneResult.illustrationUrl);
-            scene.setAudioUrl(sceneResult.audioUrl);
+            // Store both female and male audio URLs
+            scene.setFemaleAudioUrl(sceneResult.femaleAudioUrl);
+            scene.setMaleAudioUrl(sceneResult.maleAudioUrl);
             summarySceneRepository.save(scene);
         });
     }
@@ -200,7 +205,8 @@ public class SummaryService {
                         scene.getPageNumber(),
                         scene.getContent(),
                         scene.getIllustrationUrl(),
-                        scene.getAudioUrl() // tts주석
+                        scene.getFemaleAudioUrl(),
+                        scene.getMaleAudioUrl()
                 ))
                 .toList();
     }
@@ -223,13 +229,15 @@ public class SummaryService {
         int pageNumber;
         String content;
         String illustrationUrl;
-        String audioUrl;
+        String femaleAudioUrl;
+        String maleAudioUrl;
 
-        SceneResult(int pageNumber, String content, String illustrationUrl, String audioUrl) {
+        SceneResult(int pageNumber, String content, String illustrationUrl, String femaleAudioUrl, String maleAudioUrl) {
             this.pageNumber = pageNumber;
             this.content = content;
             this.illustrationUrl = illustrationUrl;
-            this.audioUrl = audioUrl;
+            this.femaleAudioUrl = femaleAudioUrl;
+            this.maleAudioUrl = maleAudioUrl;
         }
     }
 }

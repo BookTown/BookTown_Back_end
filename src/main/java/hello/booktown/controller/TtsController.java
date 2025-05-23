@@ -1,5 +1,7 @@
 package hello.booktown.controller;
 
+import com.google.cloud.texttospeech.v1.SsmlVoiceGender;
+
 import java.util.Comparator;
 import java.util.stream.Collectors;
 
@@ -40,29 +42,35 @@ public class TtsController {
             .sorted(Comparator.comparingInt(scene -> scene.getPageNumber()))
             .map(SummaryScene::getContent)
             .collect(Collectors.joining(" "));
-        String audioUrl = ttsService.generateAndUploadTts(text, bookId, 0);
+        String audioUrl = ttsService.generateAndUploadTts(text, bookId, 0, SsmlVoiceGender.FEMALE);
 
         return ResponseEntity.ok(audioUrl);
     }
 
     @Operation(summary = "요약의 전체 오디오 URL 조회", description = "summaryId에 해당하는 모든 장면의 오디오 URL 목록을 반환합니다.")
     @GetMapping("/summary/{summaryId}/audio")
-    public ResponseEntity<List<String>> getAllAudioUrls(@PathVariable Long summaryId) {
+    public ResponseEntity<List<String>> getAllAudioUrls(
+            @PathVariable Long summaryId,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "FEMALE") SsmlVoiceGender gender) {
         List<SummaryScene> scenes = summarySceneRepository.findByBookSummaryIdOrderByPageNumberAsc(summaryId);
         List<String> audioUrls = scenes.stream()
-                .map(SummaryScene::getAudioUrl)
+                .map(scene -> gender == SsmlVoiceGender.MALE ? scene.getMaleAudioUrl() : scene.getFemaleAudioUrl())
                 .toList();
         return ResponseEntity.ok(audioUrls);
     }
 
     @Operation(summary = "특정 장면의 오디오 URL 조회", description = "summaryId와 pageNumber에 해당하는 오디오 URL을 반환합니다.")
     @GetMapping("/summary/{summaryId}/audio/{pageNumber}")
-    public ResponseEntity<String> getAudioUrlByPage(@PathVariable Long summaryId, @PathVariable int pageNumber) {
+    public ResponseEntity<String> getAudioUrlByPage(
+            @PathVariable Long summaryId,
+            @PathVariable int pageNumber,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "FEMALE") SsmlVoiceGender gender) {
+
         SummaryScene scene = summarySceneRepository.findByBookSummaryIdAndPageNumber(summaryId, pageNumber);
-        if (scene == null || scene.getAudioUrl() == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(scene.getAudioUrl());
+        if (scene == null) return ResponseEntity.notFound().build();
+
+        String url = gender == SsmlVoiceGender.MALE ? scene.getMaleAudioUrl() : scene.getFemaleAudioUrl();
+        return url != null ? ResponseEntity.ok(url) : ResponseEntity.notFound().build();
     }
 
     @Operation(summary = "TTS 테스트용 오디오 생성", description = "기본 텍스트로 TTS 오디오를 생성하고 S3에 업로드하여 URL을 반환합니다.")
@@ -72,7 +80,7 @@ public class TtsController {
         Long dummyBookId = 999L; // 테스트용 bookId (실제 저장에는 사용되지 않아도 됨)
         int dummyPageNumber = 0;
 
-        String audioUrl = ttsService.generateAndUploadTts(testText, dummyBookId, dummyPageNumber);
+        String audioUrl = ttsService.generateAndUploadTts(testText, dummyBookId, dummyPageNumber, SsmlVoiceGender.FEMALE);
         return ResponseEntity.ok(audioUrl);
     }
 }
