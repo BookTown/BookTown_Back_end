@@ -23,7 +23,7 @@ public class TtsService {
 
     private final S3Uploader s3Uploader;
 
-    public String generateAndUploadTts(String text, Long bookId, int pageNumber) {
+    public String generateAndUploadTts(String text, Long bookId, int pageNumber, SsmlVoiceGender gender) {
         InputStream credentialsStream;
         String credentialsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
         try {
@@ -44,9 +44,11 @@ public class TtsService {
                             .setText(text)
                             .build();
 
+                    String voiceName = gender == SsmlVoiceGender.MALE ? "ko-KR-Standard-D" : "ko-KR-Standard-B";
                     VoiceSelectionParams voice = VoiceSelectionParams.newBuilder()
                             .setLanguageCode("ko-KR")
-                            .setSsmlGender(SsmlVoiceGender.FEMALE)
+                            .setName(voiceName)
+                            .setSsmlGender(gender)
                             .build();
 
                     AudioConfig audioConfig = AudioConfig.newBuilder()
@@ -58,7 +60,7 @@ public class TtsService {
                     ByteString audioContents = response.getAudioContent();
 
                     // 3. 임시 파일로 저장
-                    String fileName = "tts/book-" + bookId + "/scene-" + pageNumber + ".mp3";
+                    String fileName = "tts/book-" + bookId + "/scene-" + pageNumber + "-" + gender.toString().toLowerCase() + ".mp3";
                     File tempFile = File.createTempFile("tts-", ".mp3");
                     try (FileOutputStream out = new FileOutputStream(tempFile)) {
                         out.write(audioContents.toByteArray());
