@@ -18,3 +18,8 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
 
+
+
+google:
+  credentials:
+    location: file:src/main/resources/key/stt.json

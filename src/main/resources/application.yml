@@ -90,7 +90,3 @@ jwt:
   secret: ${JWT_SECRET}
   expiration: 3600000
   refresh-expiration: 604800000
-
-google:
-  credentials:
-    location: file:/app/resources/key/stt.json
