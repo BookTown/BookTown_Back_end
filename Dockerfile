@@ -1,4 +1,5 @@
 FROM openjdk:17
 WORKDIR /app
-COPY build/libs/*.jar app.jar
+COPY target/*.jar app.jar
+COPY src/main/resources/key/stt.json /app/resources/key/stt.json
 CMD ["java", "-jar", "app.jar"]
