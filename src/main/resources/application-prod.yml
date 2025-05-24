@@ -22,4 +22,4 @@ spring:
 
 google:
   credentials:
-    location: file:src/main/resources/key/stt.json
+    location: file:/app/resources/key/stt.json
