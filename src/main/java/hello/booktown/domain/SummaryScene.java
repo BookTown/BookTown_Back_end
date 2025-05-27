@@ -25,5 +25,23 @@ public class SummaryScene {
 
     @Column(columnDefinition = "TEXT")
     private String illustrationUrl;
-}
 
+    @Column(name = "female_audio_url", columnDefinition = "TEXT")
+    private String femaleAudioUrl;
+
+    @Column(name = "male_audio_url", columnDefinition = "TEXT")
+    private String maleAudioUrl;
+
+    // Getter for default audio url (female)
+    public String getAudioUrl() {
+        return femaleAudioUrl;
+    }
+
+    public String getFemaleAudioUrl() {
+        return femaleAudioUrl;
+    }
+
+    public String getMaleAudioUrl() {
+        return maleAudioUrl;
+    }
+}

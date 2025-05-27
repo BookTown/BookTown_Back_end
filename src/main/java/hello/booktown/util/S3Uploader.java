@@ -44,6 +44,22 @@ public class S3Uploader {
         }
     }
 
+    public String upload(java.io.File file, String key) {
+        try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(file.length());
+            metadata.setContentType("audio/mpeg");
+
+            amazonS3Client.putObject(
+                new PutObjectRequest(bucket, key, fis, metadata)
+            );
+
+            return amazonS3Client.getUrl(bucket, key).toString();
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("S3 파일 업로드 실패", e);
+        }
+    }
+
     public void delete(String fileUrl) {
         String key = fileUrl.substring(fileUrl.indexOf("profile/")); // 경로 추출
         amazonS3Client.deleteObject(bucket, key);

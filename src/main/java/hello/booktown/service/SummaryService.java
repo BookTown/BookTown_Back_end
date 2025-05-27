@@ -24,6 +24,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.google.cloud.texttospeech.v1.SsmlVoiceGender;
+
 @Service
 public class SummaryService {
 
@@ -35,6 +37,7 @@ public class SummaryService {
     private final RestTemplate restTemplate;
     private final ChatClient chatClient;
     private final StabilityAIService stabilityAIService;
+    private final TtsService ttsService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("classpath:/prompts/summary-prompt.st")
@@ -48,13 +51,15 @@ public class SummaryService {
 
     public SummaryService(RestTemplate restTemplate, ChatClient.Builder chatClientBuilder,
                           BookRepository bookRepository, BookSummaryRepository bookSummaryRepository,
-                          SummarySceneRepository summarySceneRepository, StabilityAIService stabilityAIService) {
+                          SummarySceneRepository summarySceneRepository, StabilityAIService stabilityAIService,
+                          TtsService ttsService) {
         this.restTemplate = restTemplate;
         this.chatClient = chatClientBuilder.build();
         this.bookRepository = bookRepository;
         this.bookSummaryRepository = bookSummaryRepository;
         this.summarySceneRepository = summarySceneRepository;
         this.stabilityAIService = stabilityAIService;
+        this.ttsService = ttsService;
     }
 
     public List<SummarySceneResponse> summarizeBook(Long bookId) throws IOException {
@@ -167,9 +172,11 @@ public class SummaryService {
             futures.add(CompletableFuture.supplyAsync(() -> {
                 try {
                     String imageUrl = stabilityAIService.generateSceneImage(generatedPrompt, book.getId(), finalPageNumber);
-                    return new SceneResult(finalPageNumber, content, imageUrl);
+                    String femaleAudioUrl = ttsService.generateAndUploadTts(content, book.getId(), finalPageNumber, SsmlVoiceGender.FEMALE);
+                    String maleAudioUrl = ttsService.generateAndUploadTts(content, book.getId(), finalPageNumber, SsmlVoiceGender.MALE);
+                    return new SceneResult(finalPageNumber, content, imageUrl, femaleAudioUrl, maleAudioUrl);
                 } catch (Exception e) {
-                    return new SceneResult(finalPageNumber, content, null);
+                    return new SceneResult(finalPageNumber, content, null, null, null);
                 }
             }, executor));
         }
@@ -182,14 +189,25 @@ public class SummaryService {
             scene.setPageNumber(sceneResult.pageNumber);
             scene.setContent(sceneResult.content);
             scene.setIllustrationUrl(sceneResult.illustrationUrl);
+            // Store both female and male audio URLs
+            scene.setFemaleAudioUrl(sceneResult.femaleAudioUrl);
+            scene.setMaleAudioUrl(sceneResult.maleAudioUrl);
             summarySceneRepository.save(scene);
         });
     }
 
     public List<SummarySceneResponse> getSummaryScenes(Long bookId) {
-        BookSummary summary = bookSummaryRepository.findByBookId(bookId).orElseThrow(() -> new RuntimeException("요약된 책 정보를 찾을 수 없습니다."));
+        BookSummary summary = bookSummaryRepository.findByBookId(bookId)
+                .orElseThrow(() -> new RuntimeException("요약된 책 정보를 찾을 수 없습니다."));
+
         return summarySceneRepository.findByBookSummary(summary).stream()
-                .map(scene -> new SummarySceneResponse(scene.getPageNumber(), scene.getContent(), scene.getIllustrationUrl()))
+                .map(scene -> new SummarySceneResponse(
+                        scene.getPageNumber(),
+                        scene.getContent(),
+                        scene.getIllustrationUrl(),
+                        scene.getFemaleAudioUrl(),
+                        scene.getMaleAudioUrl()
+                ))
                 .toList();
     }
 
@@ -211,11 +229,15 @@ public class SummaryService {
         int pageNumber;
         String content;
         String illustrationUrl;
+        String femaleAudioUrl;
+        String maleAudioUrl;
 
-        SceneResult(int pageNumber, String content, String illustrationUrl) {
+        SceneResult(int pageNumber, String content, String illustrationUrl, String femaleAudioUrl, String maleAudioUrl) {
             this.pageNumber = pageNumber;
             this.content = content;
             this.illustrationUrl = illustrationUrl;
+            this.femaleAudioUrl = femaleAudioUrl;
+            this.maleAudioUrl = maleAudioUrl;
         }
     }
 }

@@ -42,6 +42,12 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      # 4-1) stt.json 복원 (GitHub Secret에서)
+      - name: Restore stt.json from Secret
+        run: |
+          mkdir -p src/main/resources/key
+          echo "${{ secrets.STT_JSON_BASE64 }}" | base64 -d > src/main/resources/key/stt.json
+
       # 5) Gradle 빌드 (테스트 제외)
       - name: Build with Gradle
         run: ./gradlew clean build -x test

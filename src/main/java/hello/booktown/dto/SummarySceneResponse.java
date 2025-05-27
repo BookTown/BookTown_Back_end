@@ -15,4 +15,6 @@ public class SummarySceneResponse {
     private int pageNumber;
     private String content;
     private String illustrationUrl;
+    private String femaleAudioUrl;
+    private String maleAudioUrl;
 }
