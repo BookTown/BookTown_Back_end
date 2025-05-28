@@ -84,4 +84,8 @@ public class BookApplyService {
                         .build())
                 .toList();
     }
+
+    public void deleteBookApply(Long id) {
+        bookApplyRepository.deleteById(id);
+    }
 }

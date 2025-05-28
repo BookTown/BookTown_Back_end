@@ -49,4 +49,11 @@ public class BookApplyController {
         List<BookApplyResponse> responses = bookApplyService.getAllBookApplies();
         return ResponseEntity.ok(responses);
     }
+
+    @DeleteMapping("/delete/{id}")
+    @Operation(summary = "책 신청 삭제", description = "특정 책 신청 정보를 삭제합니다.")
+    public ResponseEntity<String> deleteBookApply(@PathVariable Long id) {
+        bookApplyService.deleteBookApply(id);
+        return ResponseEntity.ok("삭제 완료");
+    }
 }
