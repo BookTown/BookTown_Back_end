@@ -1,5 +1,6 @@
 package hello.booktown.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import hello.booktown.domain.enums.ApplyStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,6 +13,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class BookApply {
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    @JsonIgnore
+    private User user;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
