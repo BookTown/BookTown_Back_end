@@ -203,7 +203,15 @@ public class QuizService {
 
         for (QuizSubmissionDto dto : submissions) {
             Quiz q = quizRepository.findById(dto.getQuizId()).orElseThrow();
-            boolean isCorrect = q.getCorrectAnswer().equalsIgnoreCase(dto.getAnswer());
+
+            boolean isCorrect;
+            if (q.getQuestionType() == QuestionType.SHORT_ANSWER) {
+                String submitted = dto.getAnswer().replaceAll("\\s+", "");
+                String correct = q.getCorrectAnswer().replaceAll("\\s+", "");
+                isCorrect = submitted.equalsIgnoreCase(correct);
+            } else {
+                isCorrect = q.getCorrectAnswer().equalsIgnoreCase(dto.getAnswer());
+            }
 
             QuizSubmission submission = new QuizSubmission();
             submission.setQuiz(q);

@@ -26,7 +26,7 @@
   "explanation": "왜 이 답이 정답인지 설명 해서~ 입니다. 라는 식으로"
 }
 
-// 주관식 (SHORT_ANSWER)
+// 주관식 (SHORT_ANSWER) 정답이 한글 기준 10글자를 넘어가면 안됨
 {
   "type": "SHORT_ANSWER",
   "difficulty": "HARD",
