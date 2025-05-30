@@ -76,7 +76,7 @@ spring:
       api-key: ${OPENAI_KEY}
     chat:
       options:
-        model: gpt-4o-mini
+        model: gpt-4.1-mini
         stream: false
     stabilityai:
       api-key: ${STABLEDIFFUSION_KEY}

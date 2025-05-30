@@ -65,11 +65,16 @@ public class QuizService {
         }
 
         List<SummaryScene> scenes = sceneRepository.findByBookSummary(summary);
-        if (scenes.size() < 10) {
-            throw new IllegalStateException("씬이 부족하여 퀴즈를 생성할 수 없습니다. (10개 필요)");
+        if (scenes.isEmpty()) {
+            throw new RuntimeException("요약된 씬 정보가 없습니다.");
         }
 
-        List<SummaryScene> selectedScenes = scenes.subList(0, 10);
+        // 🎯 무조건 10개 퀴즈 생성: 씬이 부족하면 반복 사용
+        List<SummaryScene> selectedScenes = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            selectedScenes.add(scenes.get(i % scenes.size())); // 순환
+        }
+
         for (SummaryScene scene : selectedScenes) {
             try {
                 String prompt = buildQuizPrompt(scene.getContent(), type, difficulty);
