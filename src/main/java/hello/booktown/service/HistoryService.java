@@ -127,10 +127,20 @@ public class HistoryService {
     @Transactional
     public void deleteHistory(Long userId, Long bookId, int groupIndex) {
         validateUser(userId);
+
         QuizSubmissionGroup group = groupRepository.findByUserIdAndBookIdAndGroupIndex(userId, bookId, groupIndex)
                 .orElseThrow(() -> new CustomException(ErrorCode.BAD_REQUEST));
 
-        groupRepository.delete(group); // cascade = ALL이면 submissions도 삭제됨
+        List<QuizSubmission> submissions = group.getSubmissions();
+        int scoreToDeduct = submissions.stream()
+                .filter(QuizSubmission::isCorrect)
+                .mapToInt(s -> s.getQuiz().getScore())
+                .sum();
+
+        group.getUser().updateScore(group.getUser().getScore() - scoreToDeduct);
+        userRepository.save(group.getUser());
+
+        groupRepository.delete(group);
     }
 
     private void validateUser(Long userId) {
