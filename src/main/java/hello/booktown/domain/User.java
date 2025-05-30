@@ -41,6 +41,9 @@ public class User {
 
     private String introduction;
 
+    @OneToMany(mappedBy = "user")
+    private java.util.List<BookApply> bookApplies;
+
     public void updateIntroduction(String introduction) {
         this.introduction = introduction;
     }
