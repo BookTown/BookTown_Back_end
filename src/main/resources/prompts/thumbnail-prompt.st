@@ -10,7 +10,7 @@ Style Guide:
 - Include hand-drawn linework and paper texture to create a vintage, printed-book look
 
 Character Focus:
-- Must include at least one human character in the foreground (preferably two or more)
+- Must include at least one human character in the foreground (preferably two or more), and all characters must be either actual children or adults — no ambiguous age, chibi, or child-like adults
 - Characters are the main subject — never overshadowed by scenery or props
 - Show full or half-body with **historically appropriate clothing only**
 - Faces must feature dot-like or oval eyes, rounded noses, and gentle, modest expressions
@@ -33,7 +33,7 @@ Strictly Avoid:
 - No dramatic lighting or intense emotion
 - No visible book text or formatting
 - **No modern items or outfits of any kind**
-
+- No stylized characters with ambiguous age — all characters must clearly appear as either children or adults
 Output Goal:
 A warm, human-centered, vintage illustration reflecting a clear moment from "$title$".
 It should feel like a timeless picture book page — scanned from a beloved, well-read children’s book.
