@@ -9,5 +9,4 @@ import lombok.Setter;
 public class ProfileUpdateRequestDto {
     private String username;
     private String introduction;
-    private Long score;
 }
