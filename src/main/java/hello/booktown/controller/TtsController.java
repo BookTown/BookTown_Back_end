@@ -32,20 +32,29 @@ public class TtsController {
     private final BookSummaryRepository bookSummaryRepository;
     private final SummarySceneRepository summarySceneRepository;
 
-    @Operation(summary = "요약 본문으로부터 오디오 생성", description = "bookId에 해당하는 요약을 TTS로 변환하여 오디오 URL을 반환합니다.")
-    @PostMapping("/summary/{bookId}")
-    public ResponseEntity<String> generateTtsFromSummary(@PathVariable Long bookId) {
+    @Operation(summary = "기존 summaryScene으로부터 TTS 재생성", description = "기존 bookId로 저장된 summaryScene을 기반으로 FEMALE/MALE TTS를 재생성하고 DB에 반영합니다.")
+    @PostMapping("/regenerate/{bookId}")
+    public ResponseEntity<String> regenerateTtsForScenes(@PathVariable Long bookId) {
         BookSummary summary = bookSummaryRepository.findByBookId(bookId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 책 요약이 존재하지 않습니다."));
 
-        String text = summary.getScenes().stream()
-            .sorted(Comparator.comparingInt(scene -> scene.getPageNumber()))
-            .map(SummaryScene::getContent)
-            .collect(Collectors.joining(" "));
-        String audioUrl = ttsService.generateAndUploadTts(text, bookId, 0, SsmlVoiceGender.FEMALE);
+        List<SummaryScene> scenes = summarySceneRepository.findByBookSummary(summary);
 
-        return ResponseEntity.ok(audioUrl);
+        for (SummaryScene scene : scenes) {
+            int page = scene.getPageNumber();
+            String content = scene.getContent();
+
+            String femaleUrl = ttsService.generateAndUploadTts(content, bookId, page, SsmlVoiceGender.FEMALE);
+            String maleUrl = ttsService.generateAndUploadTts(content, bookId, page, SsmlVoiceGender.MALE);
+
+            scene.setFemaleAudioUrl(femaleUrl);
+            scene.setMaleAudioUrl(maleUrl);
+        }
+
+        summarySceneRepository.saveAll(scenes);
+        return ResponseEntity.ok("TTS 재생성 및 DB 업데이트 완료");
     }
+
 
     @Operation(summary = "요약의 전체 오디오 URL 조회", description = "summaryId에 해당하는 모든 장면의 오디오 URL 목록을 반환합니다.")
     @GetMapping("/summary/{summaryId}/audio")
