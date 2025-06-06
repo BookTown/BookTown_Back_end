@@ -8,16 +8,19 @@ import hello.booktown.exception.CustomException;
 import hello.booktown.exception.ErrorCode;
 import hello.booktown.jwt.JwtTokenProvider;
 import hello.booktown.repository.BookApplyRepository;
+import hello.booktown.repository.UserRepository;
 import hello.booktown.service.BookApplyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/apply")
 @RequiredArgsConstructor
@@ -27,6 +30,7 @@ public class BookApplyController {
     private final BookApplyService bookApplyService;
     private final BookApplyRepository bookApplyRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
     private Long extractUserId(HttpServletRequest request) {
         String token = jwtTokenProvider.resolveToken(request);
@@ -72,7 +76,7 @@ public class BookApplyController {
 
     @DeleteMapping("/delete/{id}")
     @Operation(summary = "책 신청 삭제", description = "본인이 작성한 책 신청을 삭제합니다.")
-    public ResponseEntity<String> deleteBookApply(@PathVariable Long id, HttpServletRequest requestContext) {
+    public ResponseEntity<String> deleteOwnBookApply(@PathVariable Long id, HttpServletRequest requestContext) {
         Long currentUserId = extractUserId(requestContext);
 
         BookApply apply = bookApplyRepository.findById(id)
@@ -84,6 +88,26 @@ public class BookApplyController {
 
         bookApplyRepository.deleteById(id);
         return ResponseEntity.ok("삭제 완료");
+    }
+
+    @DeleteMapping("/admin/delete/{id}")
+    @Operation(summary = "관리자 신청 삭제", description = "관리자가 모든 책 신청을 삭제합니다.")
+    public ResponseEntity<String> deleteBookApplyByAdmin(@PathVariable Long id, HttpServletRequest requestContext) {
+        Long currentUserId = extractUserId(requestContext);
+
+        hello.booktown.domain.User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        if (!user.getRole().name().equals("ADMIN")) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+
+        if (!bookApplyRepository.existsById(id)) {
+            throw new CustomException(ErrorCode.BOOK_APPLY_NOT_FOUND);
+        }
+
+        bookApplyRepository.deleteById(id);
+        return ResponseEntity.ok("관리자가 신청을 삭제했습니다.");
     }
 
     @GetMapping("/user")
