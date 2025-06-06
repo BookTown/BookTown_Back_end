@@ -1,6 +1,7 @@
 package hello.booktown.domain;
 
 import hello.booktown.domain.enums.Difficulty;
+import hello.booktown.domain.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -14,13 +15,14 @@ import lombok.*;
 @Builder
 public class User {
 
-    public User(String email, String provider, String providerId, String username, String profileImage) {
+    public User(String email, String provider, String providerId, String username, String profileImage, UserRole role) {
         this.email = email;
         this.provider = provider;
         this.providerId = providerId;
         this.username = username;
         this.profileImage = profileImage;
-        this.score = 0L; // 기본값
+        this.score = 0L;
+        this.role = role;
     }
 
     @Id
@@ -56,7 +58,15 @@ public class User {
         this.score = score;
     }
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role;
+
     public void setProfileImage(String imageUrl) {
         this.profileImage = imageUrl;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role;
     }
 }

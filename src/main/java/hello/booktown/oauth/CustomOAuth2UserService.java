@@ -1,6 +1,7 @@
 package hello.booktown.oauth;
 
 import hello.booktown.domain.User;
+import hello.booktown.domain.enums.UserRole;
 import hello.booktown.repository.UserRepository;
 import hello.booktown.util.CustomUserDetails;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -46,7 +47,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String profileImage = null;
 
         User user = userRepository.findByProviderAndProviderId(provider, providerId)
-                .orElseGet(() -> userRepository.save(new User(email, provider, providerId, username, profileImage)));
+                .orElseGet(() -> userRepository.save(new User(email, provider, providerId, username, profileImage, UserRole.USER)));
 
         // CustomUserDetails 생성
         CustomUserDetails customUserDetails = new CustomUserDetails(user.getId(), user.getEmail(), "ROLE_USER");
