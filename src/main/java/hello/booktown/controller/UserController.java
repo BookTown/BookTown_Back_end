@@ -1,6 +1,7 @@
 package hello.booktown.controller;
 
 import hello.booktown.domain.User;
+import hello.booktown.dto.UserRoleUpdateRequest;
 import hello.booktown.exception.CustomException;
 import hello.booktown.exception.ErrorCode;
 import hello.booktown.jwt.JwtTokenProvider;
@@ -98,5 +99,17 @@ public class UserController {
 
         redisTemplate.opsForValue().set(token, "logout", expiration, TimeUnit.MILLISECONDS);
         return ResponseEntity.ok("로그아웃 완료");
+    }
+
+    @PatchMapping("/{userId}/role")
+    @Operation(summary = "사용자 권한 변경", description = "지정한 사용자 ID의 권한을 ADMIN 또는 USER로 변경합니다.")
+    public ResponseEntity<?> updateUserRole(@PathVariable Long userId,
+                                            @RequestBody UserRoleUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        user.setRole(request.getRole());
+        userRepository.save(user);
+        return ResponseEntity.ok("권한이 " + request.getRole() + "(으)로 변경되었습니다.");
     }
 }
