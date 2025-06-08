@@ -1,6 +1,10 @@
 spring:
   profiles:
     active: prod
+springdoc:
+  swagger-ui:
+    path: /swagger-ui
+    config-url: /v3/api-docs/swagger-config
 
   jpa:
     hibernate:
