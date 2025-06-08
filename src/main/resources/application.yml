@@ -94,4 +94,3 @@ jwt:
 springdoc:
   swagger-ui:
     path: /swagger-ui
-    config-url: /v3/api-docs/swagger-config
