@@ -33,9 +33,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String uri = request.getRequestURI();
         if (uri.startsWith("/swagger-ui") ||
-                uri.equals("/v3/api-docs") ||
-                uri.startsWith("/swagger-resources") ||
-                uri.startsWith("/webjars")) {
+            uri.equals("/v3/api-docs") ||
+            uri.startsWith("/v3/api-docs/") ||
+            uri.startsWith("/swagger-resources") ||
+            uri.startsWith("/webjars")) {
             filterChain.doFilter(request, response);
             return;
         }
