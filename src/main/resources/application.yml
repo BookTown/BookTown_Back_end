@@ -1,10 +1,6 @@
 spring:
   profiles:
     active: prod
-#springdoc:
-#  swagger-ui:
-#    path: /swagger-ui
-#    config-url: /v3/api-docs/swagger-config
 
   jpa:
     hibernate:
@@ -94,3 +90,8 @@ jwt:
   secret: ${JWT_SECRET}
   expiration: 3600000
   refresh-expiration: 604800000
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui
+    config-url: /v3/api-docs/swagger-config
