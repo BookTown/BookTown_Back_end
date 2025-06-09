@@ -121,9 +121,42 @@ public class SummaryService {
     }
 
     private List<String> summarizeInto10Scenes(String fullSummary) throws IOException {
-        String prompt = loadPromptTemplate(summaryPrompt).replace("{{fullSummary}}", fullSummary);
-        String result = chatClient.prompt(prompt).call().content().trim().replaceAll("```json|```", "");
-        return objectMapper.readValue(result, new TypeReference<>() {});
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            String prompt = loadPromptTemplate(summaryPrompt).replace("{{fullSummary}}", fullSummary);
+            String result = chatClient.prompt(prompt).call().content().trim().replaceAll("```json|```", "");
+
+            List<String> scenes;
+            try {
+                scenes = objectMapper.readValue(result, new TypeReference<>() {});
+            } catch (Exception e) {
+                log.warn("summarizeInto10Scenes JSON 파싱 오류 (시도 {}): {}", attempt, e.getMessage());
+                continue; // 파싱 오류 시 재시도
+            }
+
+            if (scenes.size() == 10) {
+                return scenes;
+            } else {
+                log.warn("summarizeInto10Scenes 결과 {}개 → 10개가 될 때까지 재요청 시도 중 (현재 시도 {}회)", scenes.size(), attempt);
+            }
+        }
+
+        // 그래도 안 되면 마지막 결과에 placeholder 추가해서 강제 10개로 맞춤
+        log.warn("summarizeInto10Scenes 3회 시도 후에도 10개 미만 → placeholder 추가로 강제 보정");
+        String placeholder = "빈 장면입니다. 이 부분은 추가 작성이 필요합니다.";
+        List<String> fallbackScenes = new ArrayList<>();
+        try {
+            String prompt = loadPromptTemplate(summaryPrompt).replace("{{fullSummary}}", fullSummary);
+            String result = chatClient.prompt(prompt).call().content().trim().replaceAll("```json|```", "");
+            fallbackScenes = objectMapper.readValue(result, new TypeReference<>() {});
+        } catch (Exception e) {
+            log.warn("Fallback summarizeInto10Scenes JSON 파싱 오류 → 빈 리스트 사용");
+        }
+
+        while (fallbackScenes.size() < 10) {
+            fallbackScenes.add(placeholder);
+        }
+
+        return fallbackScenes;
     }
 
     private String callCharacterExtractionService(String bookTitle, List<String> scenes) throws IOException {

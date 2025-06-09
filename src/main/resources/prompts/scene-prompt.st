@@ -4,8 +4,7 @@ Draw one clear and emotionally expressive scene based on the summary below.
 
 Instructions:
 • Focus on a single, realistic moment — one human character actively doing something (e.g., sitting by a train window, walking with a suitcase, talking to someone).
-• Describe the character only by age and gender (e.g., “a young man in his twenties”, “a girl around 10”).
-• The character must be shown mid-action, not just standing.
+• The character must be depicted **from the front or 3/4 angle** (not fully from the back), with **visible face and expression**.
 • The background should clearly reflect the story setting — such as a train interior, rural field, old home, or quiet city street.
 • Avoid symbolic, surreal, or decorative images. This is not a mood board — illustrate a real scene.
 
@@ -22,7 +21,7 @@ Details:
 Tone:
 • Warm, calm, nostalgic
 • Designed for children ages 8–12
-• Use posture, facial expression, and lighting to show the character’s emotion
+• Use **character posture, facial expression (visible face), and lighting** to show the character’s emotion
 
 —
 

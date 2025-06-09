@@ -75,7 +75,22 @@ public class BookService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("텍스트 URL을 찾을 수 없습니다."));
 
-        // 3. 썸네일 생성 및 업로드 (여기서 translatedTitle 넘김)
+        String descriptionPrompt = """
+You are creating a visual concept for the book "$title$". 
+Please describe in 4 sentences:
+- The overall mood or genre of the story (e.g. adventure, fairy tale, friendship, drama)
+- The main characters (if more than one, name them as "the main characters") and their typical interactions
+- For each main character or group of characters, specify their **approximate age range** (for example: "young children (5-8)", "teenagers (15-18)", "young adults (18-25)", "adults (30s)", "elderly (60s+)") — be precise, do not default to 'children' unless accurate
+For each main character or group of characters, specify their **approximate age range** (e.g.: "young children (5-8)", "teenagers (15-18)", "young adults (18-25)", "adults (30s)", "elderly (60s+)") — be precise. If the story involves adult characters (such as "The Three Musketeers", "Great Gatsby", "Sherlock Holmes"), clearly state "adults". Do not default to 'children' unless accurate.
+- Suggest a type of scene where the characters are interacting or together — NOT a single character portrait. The scene should depict a clear moment or relationship from the story, suitable for an illustrated book page.
+""".replace("$title$", originalTitle);
+
+        String description = chatClient.prompt(descriptionPrompt)
+                .call()
+                .content()
+                .trim();
+
+// 3. 썸네일 프롬프트 템플릿 로드
         String template;
         try {
             template = new String(thumbnailPromptResource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -83,12 +98,15 @@ public class BookService {
             throw new RuntimeException("썸네일 프롬프트 템플릿을 읽을 수 없습니다.", e);
         }
 
-        String imagePrompt = template.replace("$title$", originalTitle);
+// 4. imagePrompt 구성 → $title$, $description$ 치환
+        String imagePrompt = template
+                .replace("$title$", originalTitle)
+                .replace("$description$", description);
 
-        // 썸네일 생성 및 업로드
+// 5. 썸네일 생성 및 업로드
         String thumbnailUrl = stabilityAIService.generateThumbnail(imagePrompt, originalTitle);
 
-        // 4. Book 저장
+// 6. Book 저장
         Book book = new Book();
         book.setTitle(translatedTitle);
         book.setAuthor(translatedAuthor);
@@ -171,7 +189,4 @@ public class BookService {
                         .build())
                 .toList();
     }
-
-
-
 }
