@@ -32,8 +32,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String uri = request.getRequestURI();
+        String auth = request.getHeader("Authorization");
+
+        System.out.println("=== JWT 필터 실행 ===");
         System.out.println("Request URI: " + uri);
+        System.out.println("Authorization Header: " + auth);
+
         if (uri.startsWith("/swagger-ui") ||
+                uri.contains("swagger") ||
                 uri.equals("/swagger-ui.html") ||
                 uri.startsWith("/v3/api-docs") ||
                 uri.equals("/v3/api-docs/swagger-config") ||
@@ -47,6 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 uri.endsWith(".map") ||
                 uri.equals("/") ||
                 uri.equals("/index.html")) {
+            System.out.println(">> JWT 필터 예외 처리: 필터 통과");
             filterChain.doFilter(request, response);
             return;
         }
@@ -54,6 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = jwtTokenProvider.resolveToken(request);
 
         if (token == null || !jwtTokenProvider.validateToken(token)) {
+            System.out.println(">> 유효한 JWT 없음. 필터 통과");
             filterChain.doFilter(request, response);
             return;
         }
@@ -61,6 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 로그아웃된 토큰인지 확인
         String isLoggedOut = redisTemplate.opsForValue().get(token);
         if ("logout".equals(isLoggedOut)) {
+            System.out.println(">> 로그아웃된 토큰. 필터 통과");
             filterChain.doFilter(request, response);
             return;
         }
@@ -75,6 +84,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
+            System.out.println(">> 인증 객체 설정 완료: userId = " + userId);
         }
 
         filterChain.doFilter(request, response);
