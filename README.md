@@ -199,4 +199,9 @@
 
 ## 🎞 시연 영상
 
-<p><img src="https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white" alt="Youtube Badge"/> </p>
+<p>
+  <a href="https://www.youtube.com/watch?v=r0-LVrRMRjA" target="_blank">
+    <img src="https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white" alt="Youtube Badge"/>
+  </a>
+</p>
+
