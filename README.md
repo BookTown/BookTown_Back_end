@@ -115,6 +115,13 @@
   </table> 
 </div>
 
+<p align="center">
+  <a href="https://booktown.site/swagger-ui/index.html">
+    <img src="https://img.shields.io/badge/-Swagger-%23Clojure?style=for-the-badge&logo=swagger&logoColor=white" alt="Swagger Badge"/>
+  </a>
+</p>
+
+
 ## 🛠 UI 설계
 
 ![image](https://github.com/user-attachments/assets/219f19d9-4b34-4503-989d-ef610d56a3e7)
@@ -127,19 +134,18 @@
 
 ## ⚒ 아키텍처 설계
 
-![image](https://github.com/user-attachments/assets/922e51cf-fe84-4498-a837-57c5a69cb0bc)
-
+![image](https://github.com/user-attachments/assets/f5b1d51a-deaf-4548-b1a6-ba5404edfec9)
 
 ## 🗂️ ERD
 
 ![book_apply](https://github.com/user-attachments/assets/6a8d8eb7-6a9e-4bf7-954f-67936be48e5d)
 
-
 ## 📆 프로젝트 기간
 
-<h3>2025.03 ~ 2025.05</h3>
+![image](https://github.com/user-attachments/assets/8f6a6f45-9515-44e1-a84f-f56ceafcb960)
+<h3 align="center">2025.03 ~ 2025.06</h3>
 
-## ⚒️ 기술스택
+## 🔧 기술스택
 ### 프론트엔드
 
 <p><img src="https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript Badge"/> <img src="https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="TailwindCSS Badge"/> <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Badge"/> <img src="https://img.shields.io/badge/redux-%23593d88.svg?style=for-the-badge&logo=redux&logoColor=white" alt="Redux Badge"/></p>
@@ -161,8 +167,8 @@
    
 ### 협업 툴
 
-<p><img src="https://img.shields.io/badge/Notion-%23000000.svg?style=for-the-badge&logo=notion&logoColor=white" alt="Notion Badge"/> <img src="https://img.shields.io/badge/github-%23121011.svg?style=for-the-badge&logo=github&logoColor=white" alt="Github Badge"/> <img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white" alt="Discord Badge"/> <img src="https://img.shields.io/badge/Postman-FF6C37?style=for-the-badge&logo=postman&logoColor=white" alt="Postman Badge"/> <img src="https://img.shields.io/badge/-Swagger-%23Clojure?style=for-the-badge&logo=swagger&logoColor=white" alt="Swagger Badge"/></p>
-
+<p><img src="https://img.shields.io/badge/Notion-%23000000.svg?style=for-the-badge&logo=notion&logoColor=white" alt="Notion Badge"/> <img src="https://img.shields.io/badge/github-%23121011.svg?style=for-the-badge&logo=github&logoColor=white" alt="Github Badge"/> <img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white" alt="Discord Badge"/> <img src="https://img.shields.io/badge/Postman-FF6C37?style=for-the-badge&logo=postman&logoColor=white" alt="Postman Badge"/>
+  
 ## 👯‍♂️ 팀원
 <div style="overflow: hidden;">
   <table>
