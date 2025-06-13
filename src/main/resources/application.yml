@@ -84,7 +84,7 @@ spring:
         options:
           width: 1024
           height: 512
-          style-preset: analog-film
+          style-preset: anime
 
 jwt:
   secret: ${JWT_SECRET}
