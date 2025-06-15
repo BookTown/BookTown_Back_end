@@ -1,4 +1,3 @@
-// SummaryService.java - GPT 기반 장면 생성 리팩터링 버전
 package hello.booktown.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -24,6 +23,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
+
+import com.google.cloud.texttospeech.v1.SsmlVoiceGender;
 
 @Service
 public class SummaryService {
@@ -35,6 +37,8 @@ public class SummaryService {
     private final SummarySceneRepository summarySceneRepository;
     private final RestTemplate restTemplate;
     private final ChatClient chatClient;
+    private final StabilityAIService stabilityAIService;
+    private final TtsService ttsService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("classpath:/prompts/scene-outline-prompt.st")
@@ -45,12 +49,15 @@ public class SummaryService {
 
     public SummaryService(RestTemplate restTemplate, ChatClient.Builder chatClientBuilder,
                           BookRepository bookRepository, BookSummaryRepository bookSummaryRepository,
-                          SummarySceneRepository summarySceneRepository) {
+                          SummarySceneRepository summarySceneRepository, StabilityAIService stabilityAIService,
+                          TtsService ttsService) {
         this.restTemplate = restTemplate;
         this.chatClient = chatClientBuilder.build();
         this.bookRepository = bookRepository;
         this.bookSummaryRepository = bookSummaryRepository;
         this.summarySceneRepository = summarySceneRepository;
+        this.stabilityAIService = stabilityAIService;
+        this.ttsService = ttsService;
     }
 
     public List<SummarySceneResponse> summarizeBook(Long bookId) throws IOException {
@@ -58,11 +65,8 @@ public class SummaryService {
             return getSummaryScenes(bookId);
         }
 
-        Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new RuntimeException("책을 찾을 수 없습니다."));
-
-        String bookText = fetchBookText(book.getSummaryUrl());
-        bookText = cleanGutenbergText(bookText);
+        Book book = bookRepository.findById(bookId).orElseThrow(() -> new RuntimeException("책을 찾을 수 없습니다."));
+        String bookText = cleanGutenbergText(fetchBookText(book.getSummaryUrl()));
 
         List<String> chunkSummaries = summarizeChunksAsync(bookText);
         String fullSummary = String.join("\n\n", chunkSummaries);
@@ -70,18 +74,7 @@ public class SummaryService {
         List<String> sceneOutlines = generateSceneOutline(fullSummary);
         List<String> sceneSummaries = expandScenes(sceneOutlines);
 
-        BookSummary bookSummary = new BookSummary();
-        bookSummary.setBook(book);
-        bookSummaryRepository.save(bookSummary);
-
-        for (int i = 0; i < sceneSummaries.size(); i++) {
-            SummaryScene scene = new SummaryScene();
-            scene.setBookSummary(bookSummary);
-            scene.setPageNumber(i + 1);
-            scene.setContent(sceneSummaries.get(i));
-            summarySceneRepository.save(scene);
-        }
-
+        saveScenesParallel(book, sceneSummaries);
         return getSummaryScenes(bookId);
     }
 
@@ -91,12 +84,11 @@ public class SummaryService {
     }
 
     private String cleanGutenbergText(String rawText) {
-        String text = rawText;
-        int startIndex = text.indexOf("*** START OF THE PROJECT GUTENBERG EBOOK");
-        if (startIndex != -1) text = text.substring(startIndex + 40);
-        int endIndex = text.indexOf("*** END OF THE PROJECT GUTENBERG EBOOK");
-        if (endIndex != -1) text = text.substring(0, endIndex);
-        return text.trim();
+        int startIndex = rawText.indexOf("*** START OF THE PROJECT GUTENBERG EBOOK");
+        if (startIndex != -1) rawText = rawText.substring(startIndex + 40);
+        int endIndex = rawText.indexOf("*** END OF THE PROJECT GUTENBERG EBOOK");
+        if (endIndex != -1) rawText = rawText.substring(0, endIndex);
+        return rawText.trim();
     }
 
     private List<String> summarizeChunksAsync(String text) {
@@ -107,13 +99,11 @@ public class SummaryService {
         }
 
         ExecutorService executor = Executors.newFixedThreadPool(Math.min(chunks.size(), 10));
-        List<CompletableFuture<String>> futures = new ArrayList<>();
-        for (String chunk : chunks) {
-            futures.add(CompletableFuture.supplyAsync(() -> {
-                String prompt = "다음 내용을 최대한 간결하게 요약하되, 사건의 흐름이 드러나도록 해줘. 내용: " + chunk;
-                return chatClient.prompt(prompt).call().content().trim();
-            }, executor));
-        }
+        List<CompletableFuture<String>> futures = chunks.stream().map(chunk ->
+                CompletableFuture.supplyAsync(() ->
+                        chatClient.prompt("다음 내용을 간결하게 요약해줘: " + chunk).call().content().trim(), executor)
+        ).toList();
+
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         executor.shutdown();
         return futures.stream().map(CompletableFuture::join).toList();
@@ -126,13 +116,57 @@ public class SummaryService {
     }
 
     private List<String> expandScenes(List<String> outlines) throws IOException {
-        List<String> scenes = new ArrayList<>();
-        for (String outline : outlines) {
-            String prompt = loadPromptTemplate(sceneExpansionPrompt).replace("{{sceneOutline}}", outline);
-            String result = chatClient.prompt(prompt).call().content().trim();
-            scenes.add(result);
+        ExecutorService executor = Executors.newFixedThreadPool(5);
+        List<CompletableFuture<String>> futures = outlines.stream().map(outline ->
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        String prompt = loadPromptTemplate(sceneExpansionPrompt).replace("{{sceneOutline}}", outline);
+                        return chatClient.prompt(prompt).call().content().trim();
+                    } catch (Exception e) {
+                        return "";
+                    }
+                }, executor)
+        ).toList();
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        executor.shutdown();
+        return futures.stream().map(CompletableFuture::join).toList();
+    }
+
+    private void saveScenesParallel(Book book, List<String> sceneSummaries) {
+        BookSummary bookSummary = new BookSummary();
+        bookSummary.setBook(book);
+        bookSummaryRepository.save(bookSummary);
+
+        ExecutorService executor = Executors.newFixedThreadPool(5);
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        for (int i = 0; i < sceneSummaries.size(); i++) {
+            int page = i + 1;
+            String content = sceneSummaries.get(i);
+
+            futures.add(CompletableFuture.runAsync(() -> {
+                try {
+                    String imageUrl = stabilityAIService.generateSceneImage(content, book.getId(), page);
+                    String femaleAudioUrl = ttsService.generateAndUploadTts(content, book.getId(), page, SsmlVoiceGender.FEMALE);
+                    String maleAudioUrl = ttsService.generateAndUploadTts(content, book.getId(), page, SsmlVoiceGender.MALE);
+
+                    SummaryScene scene = new SummaryScene();
+                    scene.setBookSummary(bookSummary);
+                    scene.setPageNumber(page);
+                    scene.setContent(content);
+                    scene.setIllustrationUrl(imageUrl);
+                    scene.setFemaleAudioUrl(femaleAudioUrl);
+                    scene.setMaleAudioUrl(maleAudioUrl);
+                    summarySceneRepository.save(scene);
+                } catch (Exception e) {
+                    log.error("장면 저장 중 오류 (page {}): {}", page, e.getMessage());
+                }
+            }, executor));
         }
-        return scenes;
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        executor.shutdown();
     }
 
     private String loadPromptTemplate(Resource resource) throws IOException {
@@ -150,7 +184,6 @@ public class SummaryService {
                         scene.getIllustrationUrl(),
                         scene.getFemaleAudioUrl(),
                         scene.getMaleAudioUrl()
-                ))
-                .toList();
+                )).toList();
     }
 }
