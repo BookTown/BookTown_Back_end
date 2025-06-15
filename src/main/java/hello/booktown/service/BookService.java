@@ -1,0 +1,192 @@
+package hello.booktown.service;
+
+import hello.booktown.domain.Book;
+import hello.booktown.dto.BookResponse;
+import hello.booktown.dto.GutendexResponse;
+import hello.booktown.exception.CustomException;
+import hello.booktown.exception.ErrorCode;
+import hello.booktown.repository.BookRepository;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static hello.booktown.repository.BookSpecification.titleContains;
+
+@Service
+public class BookService {
+
+    private final RestTemplate restTemplate;
+    private final ChatClient chatClient; // GPT 요약용 커스텀 서비스
+    private final BookRepository bookRepository;
+    private final StabilityAIService stabilityAIService;
+
+    public BookService(RestTemplate restTemplate, ChatClient.Builder chatClientBuilder, BookRepository bookRepository,  StabilityAIService stabilityAIService) {
+        this.restTemplate = restTemplate;
+        this.chatClient = chatClientBuilder.build();
+        this.bookRepository = bookRepository;
+        this.stabilityAIService = stabilityAIService;
+    }
+
+    @Value("classpath:/prompts/thumbnail-prompt.st")
+    private Resource thumbnailPromptResource;
+
+    //구텐베르크 책 ID를 통해 BookDB에 책 정보를 저장함
+    public Book saveBookFromGutenberg(Long gutenbergId) {
+        String metadataUrl = "https://gutendex.com/books/" + gutenbergId;
+        ResponseEntity<GutendexResponse> response = restTemplate.getForEntity(metadataUrl, GutendexResponse.class);
+        GutendexResponse bookData = response.getBody();
+
+        if (bookData == null) {
+            throw new RuntimeException("Gutenberg 책 정보를 가져올 수 없습니다.");
+        }
+
+        String originalTitle = bookData.getTitle();
+        String originalAuthor = bookData.getAuthors() != null && !bookData.getAuthors().isEmpty()
+                ? bookData.getAuthors().get(0).getName()
+                : null;
+
+        // 1. GPT 번역 (책 제목 먼저 확보)
+        String translatedTitle = chatClient.prompt("다음 영어 책 제목을 한국어로 번역해줘 책 이름만 반환해 한국어 번역판의 이름 한 종류만 단답식으로 반환해: " + originalTitle)
+                .call()
+                .content()
+                .trim();
+
+        String translatedAuthor = originalAuthor != null
+                ? chatClient.prompt("다음 영어 작가 이름을 한국어로 번역해줘 작가 이름만 반환해: " + originalAuthor)
+                .call()
+                .content()
+                .trim()
+                : null;
+
+        String textUrl = bookData.getFormats().entrySet().stream()
+                .filter(e -> e.getKey().contains("text/plain") && !e.getKey().contains(".zip"))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("텍스트 URL을 찾을 수 없습니다."));
+
+        String descriptionPrompt = """
+You are creating a visual concept for the book "$title$". 
+Please describe in 4 sentences:
+- The overall mood or genre of the story (e.g. adventure, fairy tale, friendship, drama)
+- The main characters (if more than one, name them as "the main characters") and their typical interactions
+- For each main character or group of characters, specify their **approximate age range** (for example: "young children (5-8)", "teenagers (15-18)", "young adults (18-25)", "adults (30s)", "elderly (60s+)") — be precise, do not default to 'children' unless accurate
+For each main character or group of characters, specify their **approximate age range** (e.g.: "young children (5-8)", "teenagers (15-18)", "young adults (18-25)", "adults (30s)", "elderly (60s+)") — be precise. If the story involves adult characters (such as "The Three Musketeers", "Great Gatsby", "Sherlock Holmes"), clearly state "adults". Do not default to 'children' unless accurate.
+- Suggest a type of scene where the characters are interacting or together — NOT a single character portrait. The scene should depict a clear moment or relationship from the story, suitable for an illustrated book page.
+""".replace("$title$", originalTitle);
+
+        String description = chatClient.prompt(descriptionPrompt)
+                .call()
+                .content()
+                .trim();
+
+// 3. 썸네일 프롬프트 템플릿 로드
+        String template;
+        try {
+            template = new String(thumbnailPromptResource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new RuntimeException("썸네일 프롬프트 템플릿을 읽을 수 없습니다.", e);
+        }
+
+// 4. imagePrompt 구성 → $title$, $description$ 치환
+        String imagePrompt = template
+                .replace("$title$", originalTitle)
+                .replace("$description$", description);
+
+// 5. 썸네일 생성 및 업로드
+        String thumbnailUrl = stabilityAIService.generateThumbnail(imagePrompt, originalTitle);
+
+// 6. Book 저장
+        Book book = new Book();
+        book.setTitle(translatedTitle);
+        book.setAuthor(translatedAuthor);
+        book.setSummaryUrl(textUrl);
+        book.setThumbnailUrl(thumbnailUrl);
+
+        return bookRepository.save(book);
+    }
+
+    public BookResponse getBookById(Long bookId) {
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new RuntimeException("책을 찾을 수 없습니다."));
+
+        return BookResponse.builder()
+                .bookId(book.getId())
+                .title(book.getTitle())
+                .author(book.getAuthor())
+                .summaryUrl(book.getSummaryUrl())
+                .thumbnailUrl(book.getThumbnailUrl())
+                .build();
+    }
+
+    public Book getRandomBook() {
+        return bookRepository.findRandomBook().orElseThrow(() -> new RuntimeException("책이 없습니다"));
+    }
+
+    public List<Book> getLatestBooks() {
+        return bookRepository.findTop10ByOrderByCreatedAtDesc();
+    }
+
+    public List<Book> getTopLikedBooks() {
+        return bookRepository.findTop10ByOrderByLikeCountDesc();
+    }
+
+    public List<Book> getAllBooksByLikes() {
+        return bookRepository.findAllByOrderByLikeCountDesc();
+    }
+
+    public List<Book> getAllBooksByCreatedAt() {
+        return bookRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    public List<BookResponse> getBookInfo(Long bookId, String title, String author) {
+        List<Book> books;
+
+        if (bookId != null) {
+            Book book = bookRepository.findById(bookId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.BOOK_NOT_FOUND));
+            books = List.of(book);
+        } else if (title != null) {
+            books = bookRepository.findByTitleContainingIgnoreCase(title);
+        } else if (author != null) {
+            books = bookRepository.findByAuthorContainingIgnoreCase(author);
+        } else {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        return books.stream()
+                .map(book -> BookResponse.builder()
+                        .bookId(book.getId())
+                        .title(book.getTitle())
+                        .author(book.getAuthor())
+                        .summaryUrl(book.getSummaryUrl())
+                        .thumbnailUrl(book.getThumbnailUrl())
+                        .likecount(book.getLikeCount())
+                        .build())
+                .toList();
+    }
+
+
+    public List<BookResponse> searchBooksByTitle(String query) {
+        return bookRepository.findAll(titleContains(query)).stream()
+                .map(book -> BookResponse.builder()
+                        .bookId(book.getId())
+                        .title(book.getTitle())
+                        .author(book.getAuthor())
+                        .summaryUrl(book.getSummaryUrl())
+                        .thumbnailUrl(book.getThumbnailUrl())
+                        .likecount(book.getLikeCount())
+                        .build())
+                .toList();
+    }
+}
