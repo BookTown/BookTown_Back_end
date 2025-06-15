@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 
 import com.google.cloud.texttospeech.v1.SsmlVoiceGender;
 
@@ -41,11 +40,14 @@ public class SummaryService {
     private final TtsService ttsService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("classpath:/prompts/scene-outline-prompt.st")
-    private Resource sceneOutlinePrompt;
+    @Value("classpath:/prompts/summary-prompt.st")
+    private Resource summaryPrompt;
 
-    @Value("classpath:/prompts/scene-expansion-prompt.st")
-    private Resource sceneExpansionPrompt;
+    @Value("classpath:/prompts/diffusion-bulk-prompt.st")
+    private Resource diffusionPrompt;
+
+    @Value("classpath:/prompts/character-dictionary-prompt.st")
+    private Resource characterDictionaryPrompt;
 
     public SummaryService(RestTemplate restTemplate, ChatClient.Builder chatClientBuilder,
                           BookRepository bookRepository, BookSummaryRepository bookSummaryRepository,
@@ -65,16 +67,21 @@ public class SummaryService {
             return getSummaryScenes(bookId);
         }
 
-        Book book = bookRepository.findById(bookId).orElseThrow(() -> new RuntimeException("책을 찾을 수 없습니다."));
-        String bookText = cleanGutenbergText(fetchBookText(book.getSummaryUrl()));
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new RuntimeException("책을 찾을 수 없습니다."));
+
+        String bookText = fetchBookText(book.getSummaryUrl());
+        bookText = cleanGutenbergText(bookText);
 
         List<String> chunkSummaries = summarizeChunksAsync(bookText);
         String fullSummary = String.join("\n\n", chunkSummaries);
+        log.info("summarizeChunksAsync 결과 총 요약 문자 수: {}", fullSummary.length());
 
-        List<String> sceneOutlines = generateSceneOutline(fullSummary);
-        List<String> sceneSummaries = expandScenes(sceneOutlines);
+        List<String> sceneSummaries = summarizeInto10Scenes(fullSummary);
 
-        saveScenesParallel(book, sceneSummaries);
+        String characterDictionary = callCharacterExtractionService(book.getTitle(), sceneSummaries);
+
+        saveScenesParallel(book, sceneSummaries, characterDictionary);
         return getSummaryScenes(bookId);
     }
 
@@ -84,93 +91,145 @@ public class SummaryService {
     }
 
     private String cleanGutenbergText(String rawText) {
-        int startIndex = rawText.indexOf("*** START OF THE PROJECT GUTENBERG EBOOK");
-        if (startIndex != -1) rawText = rawText.substring(startIndex + 40);
-        int endIndex = rawText.indexOf("*** END OF THE PROJECT GUTENBERG EBOOK");
-        if (endIndex != -1) rawText = rawText.substring(0, endIndex);
-        return rawText.trim();
+        String text = rawText;
+        int startIndex = text.indexOf("*** START OF THE PROJECT GUTENBERG EBOOK");
+        if (startIndex != -1) text = text.substring(startIndex + 40);
+        int endIndex = text.indexOf("*** END OF THE PROJECT GUTENBERG EBOOK");
+        if (endIndex != -1) text = text.substring(0, endIndex);
+        return text.trim();
     }
 
     private List<String> summarizeChunksAsync(String text) {
-        List<String> chunks = new ArrayList<>();
-        for (int i = 0; i < text.length(); i += 6000) {
-            int end = Math.min(text.length(), i + 6000);
-            chunks.add(text.substring(i, end));
+        List<String> chunks = splitTextIntoChunks(text, 8000);
+        log.info("splitTextIntoChunks size: {}", chunks.size());
+        ExecutorService executor = Executors.newFixedThreadPool(Math.min(chunks.size(), 10));
+        List<CompletableFuture<String>> futures = new ArrayList<>();
+
+        int index = 1;
+        for (String chunk : chunks) {
+            int currentIndex = index++;
+            futures.add(CompletableFuture.supplyAsync(() -> {
+                String prompt = "다음 내용을 최대한 짧고 간결하게 요약하되, 주요 인물들의 사건은 포함시켜. 불필요한 문장은 무조건 최대한 제거해. 내용: " + chunk;
+                String result = chatClient.prompt(prompt).call().content().trim();
+                log.info("청크 {} 원본: {}자 → 요약: {}자", currentIndex, chunk.length(), result.length());
+                return result;
+            }, executor));
+        }
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        executor.shutdown();
+        return futures.stream().map(CompletableFuture::join).toList();
+    }
+
+    private List<String> summarizeInto10Scenes(String fullSummary) throws IOException {
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            String prompt = loadPromptTemplate(summaryPrompt).replace("{{fullSummary}}", fullSummary);
+            String result = chatClient.prompt(prompt).call().content().trim().replaceAll("```json|```", "");
+
+            List<String> scenes;
+            try {
+                scenes = objectMapper.readValue(result, new TypeReference<>() {
+                });
+            } catch (Exception e) {
+                log.warn("summarizeInto10Scenes JSON 파싱 오류 (시도 {}): {}", attempt, e.getMessage());
+                continue; // 파싱 오류 시 재시도
+            }
+
+            if (scenes.size() == 10) {
+                return scenes;
+            } else {
+                log.warn("summarizeInto10Scenes 결과 {}개 → 10개가 될 때까지 재요청 시도 중 (현재 시도 {}회)", scenes.size(), attempt);
+            }
         }
 
-        ExecutorService executor = Executors.newFixedThreadPool(Math.min(chunks.size(), 10));
-        List<CompletableFuture<String>> futures = chunks.stream().map(chunk ->
-                CompletableFuture.supplyAsync(() ->
-                        chatClient.prompt("다음 내용을 간결하게 요약해줘: " + chunk).call().content().trim(), executor)
-        ).toList();
+        // 그래도 안 되면 마지막 결과에 placeholder 추가해서 강제 10개로 맞춤
+        log.warn("summarizeInto10Scenes 3회 시도 후에도 10개 미만 → placeholder 추가로 강제 보정");
+        String placeholder = "빈 장면입니다. 이 부분은 추가 작성이 필요합니다.";
+        List<String> fallbackScenes = new ArrayList<>();
+        try {
+            String prompt = loadPromptTemplate(summaryPrompt).replace("{{fullSummary}}", fullSummary);
+            String result = chatClient.prompt(prompt).call().content().trim().replaceAll("```json|```", "");
+            fallbackScenes = objectMapper.readValue(result, new TypeReference<>() {
+            });
+        } catch (Exception e) {
+            log.warn("Fallback summarizeInto10Scenes JSON 파싱 오류 → 빈 리스트 사용");
+        }
 
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        executor.shutdown();
-        return futures.stream().map(CompletableFuture::join).toList();
+        while (fallbackScenes.size() < 10) {
+            fallbackScenes.add(placeholder);
+        }
+
+        return fallbackScenes;
     }
 
-    private List<String> generateSceneOutline(String fullSummary) throws IOException {
-        String prompt = loadPromptTemplate(sceneOutlinePrompt).replace("{{fullSummary}}", fullSummary);
-        String result = chatClient.prompt(prompt).call().content().trim().replaceAll("```json|```", "");
-        return objectMapper.readValue(result, new TypeReference<>() {});
+    private String callCharacterExtractionService(String bookTitle, List<String> scenes) throws IOException {
+        String scenesJson = objectMapper.writeValueAsString(scenes);
+        String prompt = loadPromptTemplate(characterDictionaryPrompt)
+                .replace("{{bookTitle}}", bookTitle)
+                .replace("{{sceneListJson}}", scenesJson);
+        String result = chatClient.prompt(prompt).call().content().trim();
+
+        log.info("캐릭터 딕셔너리 추출 결과:\n{}", result);
+
+        return result;
     }
 
-    private List<String> expandScenes(List<String> outlines) throws IOException {
-        ExecutorService executor = Executors.newFixedThreadPool(5);
-        List<CompletableFuture<String>> futures = outlines.stream().map(outline ->
-                CompletableFuture.supplyAsync(() -> {
-                    try {
-                        String prompt = loadPromptTemplate(sceneExpansionPrompt).replace("{{sceneOutline}}", outline);
-                        return chatClient.prompt(prompt).call().content().trim();
-                    } catch (Exception e) {
-                        return "";
-                    }
-                }, executor)
-        ).toList();
-
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        executor.shutdown();
-        return futures.stream().map(CompletableFuture::join).toList();
-    }
-
-    private void saveScenesParallel(Book book, List<String> sceneSummaries) {
+    private void saveScenesParallel(Book book, List<String> sceneSummaries, String characterDictionary) throws IOException {
         BookSummary bookSummary = new BookSummary();
         bookSummary.setBook(book);
         bookSummaryRepository.save(bookSummary);
 
+        List<String> firstSentences = sceneSummaries.stream()
+                .map(content -> content.split("[.?!]")[0].trim())
+                .toList();
+
+        String jsonArray = objectMapper.writeValueAsString(firstSentences);
+        log.info("diffusion bulk 프롬프트에 전달된 firstSentences JSON:\n{}", jsonArray);
+        String diffusionBulkPromptText = loadPromptTemplate(diffusionPrompt)
+                .replace("{{sceneListJson}}", jsonArray)
+                .replace("{{bookTitle}}", book.getTitle())
+                .replace("{{characterAppearanceDictionary}}", characterDictionary);
+
+        String bulkResult = chatClient.prompt(diffusionBulkPromptText).call().content().trim();
+        bulkResult = bulkResult.replaceAll("```json|```", "").trim();
+        List<String> diffusionPrompts = objectMapper.readValue(bulkResult, new TypeReference<>() {
+        });
+        log.info("GPT diffusion 프롬프트 10개 JSON 응답:\n{}", diffusionPrompts);
+
         ExecutorService executor = Executors.newFixedThreadPool(5);
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        List<CompletableFuture<SceneResult>> futures = new ArrayList<>();
 
-        for (int i = 0; i < sceneSummaries.size(); i++) {
-            int page = i + 1;
-            String content = sceneSummaries.get(i);
+        for (int i = 0; i < Math.min(sceneSummaries.size(), diffusionPrompts.size()); i++) {
+            int pageNumber = i + 1;
+            String content = sceneSummaries.get(i).trim();
+            String generatedPrompt = diffusionPrompts.get(i).trim();
+            if (content.isEmpty() || generatedPrompt.isEmpty()) continue;
 
-            futures.add(CompletableFuture.runAsync(() -> {
+            int finalPageNumber = pageNumber;
+            futures.add(CompletableFuture.supplyAsync(() -> {
                 try {
-                    String imageUrl = stabilityAIService.generateSceneImage(content, book.getId(), page);
-                    String femaleAudioUrl = ttsService.generateAndUploadTts(content, book.getId(), page, SsmlVoiceGender.FEMALE);
-                    String maleAudioUrl = ttsService.generateAndUploadTts(content, book.getId(), page, SsmlVoiceGender.MALE);
-
-                    SummaryScene scene = new SummaryScene();
-                    scene.setBookSummary(bookSummary);
-                    scene.setPageNumber(page);
-                    scene.setContent(content);
-                    scene.setIllustrationUrl(imageUrl);
-                    scene.setFemaleAudioUrl(femaleAudioUrl);
-                    scene.setMaleAudioUrl(maleAudioUrl);
-                    summarySceneRepository.save(scene);
+                    String imageUrl = stabilityAIService.generateSceneImage(generatedPrompt, book.getId(), finalPageNumber);
+                    String femaleAudioUrl = ttsService.generateAndUploadTts(content, book.getId(), finalPageNumber, SsmlVoiceGender.FEMALE);
+                    String maleAudioUrl = ttsService.generateAndUploadTts(content, book.getId(), finalPageNumber, SsmlVoiceGender.MALE);
+                    return new SceneResult(finalPageNumber, content, imageUrl, femaleAudioUrl, maleAudioUrl);
                 } catch (Exception e) {
-                    log.error("장면 저장 중 오류 (page {}): {}", page, e.getMessage());
+                    return new SceneResult(finalPageNumber, content, null, null, null);
                 }
             }, executor));
         }
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         executor.shutdown();
-    }
-
-    private String loadPromptTemplate(Resource resource) throws IOException {
-        return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        futures.stream().map(CompletableFuture::join).sorted(Comparator.comparingInt(a -> a.pageNumber)).forEach(sceneResult -> {
+            SummaryScene scene = new SummaryScene();
+            scene.setBookSummary(bookSummary);
+            scene.setPageNumber(sceneResult.pageNumber);
+            scene.setContent(sceneResult.content);
+            scene.setIllustrationUrl(sceneResult.illustrationUrl);
+            // Store both female and male audio URLs
+            scene.setFemaleAudioUrl(sceneResult.femaleAudioUrl);
+            scene.setMaleAudioUrl(sceneResult.maleAudioUrl);
+            summarySceneRepository.save(scene);
+        });
     }
 
     public List<SummarySceneResponse> getSummaryScenes(Long bookId) {
@@ -184,6 +243,37 @@ public class SummaryService {
                         scene.getIllustrationUrl(),
                         scene.getFemaleAudioUrl(),
                         scene.getMaleAudioUrl()
-                )).toList();
+                ))
+                .toList();
+    }
+
+    private List<String> splitTextIntoChunks(String text, int chunkSize) {
+        List<String> chunks = new ArrayList<>();
+        for (int i = 0; i < text.length(); i += chunkSize) {
+            int end = Math.min(text.length(), i + chunkSize);
+            chunks.add(text.substring(i, end));
+
+        }
+        return chunks;
+    }
+
+    private String loadPromptTemplate(Resource resource) throws IOException {
+        return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+    }
+
+    private static class SceneResult {
+        int pageNumber;
+        String content;
+        String illustrationUrl;
+        String femaleAudioUrl;
+        String maleAudioUrl;
+
+        SceneResult(int pageNumber, String content, String illustrationUrl, String femaleAudioUrl, String maleAudioUrl) {
+            this.pageNumber = pageNumber;
+            this.content = content;
+            this.illustrationUrl = illustrationUrl;
+            this.femaleAudioUrl = femaleAudioUrl;
+            this.maleAudioUrl = maleAudioUrl;
+        }
     }
 }
