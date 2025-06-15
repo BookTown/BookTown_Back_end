@@ -100,8 +100,8 @@ public class SummaryService {
 
     private List<String> summarizeChunksAsync(String text) {
         List<String> chunks = new ArrayList<>();
-        for (int i = 0; i < text.length(); i += 6000) {
-            chunks.add(text.substring(i, Math.min(text.length(), i + 6000)));
+        for (int i = 0; i < text.length(); i += 7000) {
+            chunks.add(text.substring(i, Math.min(text.length(), i + 7000)));
         }
 
         ExecutorService executor = Executors.newFixedThreadPool(Math.min(chunks.size(), 10));
