@@ -1,3 +1,5 @@
+// SummaryService.java
+
 package hello.booktown.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -17,7 +19,6 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
-
 import com.google.cloud.texttospeech.v1.SsmlVoiceGender;
 
 import java.io.IOException;
@@ -76,7 +77,7 @@ public class SummaryService {
         List<String> chunkSummaries = summarizeChunksAsync(bookText);
         String fullSummary = String.join("\n\n", chunkSummaries);
 
-        List<String> sceneOutlines = generateSceneOutline(fullSummary);
+        List<String> sceneOutlines = generateSceneOutline(fullSummary); // ✅ FIXED 내부 확인
         List<String> sceneSummaries = expandScenes(sceneOutlines);
         String characterDictionary = callCharacterExtractionService(book.getTitle(), sceneSummaries);
 
@@ -119,7 +120,13 @@ public class SummaryService {
     private List<String> generateSceneOutline(String fullSummary) throws IOException {
         String prompt = loadPromptTemplate(sceneOutlinePrompt).replace("{{fullSummary}}", fullSummary);
         String result = chatClient.prompt(prompt).call().content().trim().replaceAll("```json|```", "");
-        return objectMapper.readValue(result, new TypeReference<>() {});
+
+        // ✅ FIXED: JSON이 [ { "event": "..." }, ... ] 형태일 경우 대응
+        List<Map<String, String>> outlineObjects = objectMapper.readValue(result, new TypeReference<>() {});
+        return outlineObjects.stream()
+                .map(obj -> obj.get("event"))
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     private List<String> expandScenes(List<String> outlines) throws IOException {
