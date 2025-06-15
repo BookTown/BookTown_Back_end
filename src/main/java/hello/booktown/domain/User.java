@@ -1,9 +1,10 @@
 package hello.booktown.domain;
 
-import hello.booktown.domain.enums.Difficulty;
 import hello.booktown.domain.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.List;
 
 @Entity
 @Table(uniqueConstraints = {
@@ -30,21 +31,32 @@ public class User {
     private Long id;
 
     private String email;
-
     private String provider;
-
     private String providerId;
-
     private String username;
-
     private String profileImage;
-
     private Long score;
-
     private String introduction;
 
-    @OneToMany(mappedBy = "user")
-    private java.util.List<BookApply> bookApplies;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<BookApply> bookApplies;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<BookLike> bookLikes;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Quiz> quizzes;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<QuizSubmissionGroup> quizSubmissionGroups;
+
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<hello.booktown.domain.quiz.QuizSubmit> quizSubmits;
 
     public void updateIntroduction(String introduction) {
         this.introduction = introduction;
@@ -57,10 +69,6 @@ public class User {
     public void updateScore(Long score) {
         this.score = score;
     }
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private UserRole role;
 
     public void setProfileImage(String imageUrl) {
         this.profileImage = imageUrl;
