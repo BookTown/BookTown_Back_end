@@ -1,9 +1,10 @@
 package hello.booktown.domain;
 
-import hello.booktown.domain.enums.Difficulty;
 import hello.booktown.domain.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.List;
 
 @Entity
 @Table(uniqueConstraints = {
@@ -43,9 +44,24 @@ public class User {
 
     private String introduction;
 
-    @OneToMany(mappedBy = "user")
-    private java.util.List<BookApply> bookApplies;
+    // 실제 연관관계가 존재하는 엔티티만 남깁니다
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<BookApply> bookApplies;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Quiz> quizzes;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<QuizSubmissionGroup> quizSubmissionGroups;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<BookLike> bookLikes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role;
+
+    // 업데이트 메서드
     public void updateIntroduction(String introduction) {
         this.introduction = introduction;
     }
@@ -57,10 +73,6 @@ public class User {
     public void updateScore(Long score) {
         this.score = score;
     }
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private UserRole role;
 
     public void setProfileImage(String imageUrl) {
         this.profileImage = imageUrl;
