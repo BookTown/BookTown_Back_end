@@ -100,7 +100,7 @@ public class SummaryService {
     }
 
     private List<String> summarizeChunksAsync(String text) {
-        List<String> chunks = splitTextIntoChunks(text, 8000);
+        List<String> chunks = splitTextIntoChunks(text, 6000);
         log.info("splitTextIntoChunks size: {}", chunks.size());
         ExecutorService executor = Executors.newFixedThreadPool(Math.min(chunks.size(), 10));
         List<CompletableFuture<String>> futures = new ArrayList<>();
