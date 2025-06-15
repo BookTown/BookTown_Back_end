@@ -139,7 +139,7 @@ public class SummaryService {
         return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
     }
 
-    private List<SummarySceneResponse> getSummaryScenes(Long bookId) {
+    public List<SummarySceneResponse> getSummaryScenes(Long bookId) {
         BookSummary summary = bookSummaryRepository.findByBookId(bookId)
                 .orElseThrow(() -> new RuntimeException("요약된 책 정보를 찾을 수 없습니다."));
 
