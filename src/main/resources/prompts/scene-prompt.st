@@ -22,3 +22,5 @@ Time and culture-appropriate clothing, hairstyles, and props.
 
 Story Context (for the illustrator): The following is a story scene summary. Focus the illustration on visually expressing this particular moment.
 Story Summary: {{summary}}
+
+-- style: watercolor, soft lighting, storybook illustration, same character design throughout --

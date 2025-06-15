@@ -61,3 +61,5 @@ Example output:
 [
 "A bustling street in early 16th century Verona, where a fight has broken out between two young men. Benvolio, a young man with short dark hair dressed in 16th century Italian Renaissance clothing, stands in the center with his arms raised in a calming gesture. On either side, two adult male servants in plain tunics are engaged in a scuffle. The scene is set against a backdrop of stone buildings and cobblestone streets, with sunlight filtering through. All faces are clearly visible, showing expressions of tension and determination. The illustration is in vintage European children’s book style, watercolor and ink, with soft colors and natural textures."
 ]
+
+-- style: watercolor, soft lighting, storybook illustration, same character design throughout --
