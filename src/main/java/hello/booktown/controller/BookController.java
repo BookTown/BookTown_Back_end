@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -67,8 +68,9 @@ public class BookController {
 
     @Operation(summary = "책 등록 하기", description = "Gutendex API를 사용해 책의 정보를 불러와 DB에 저장합니다.")
     @PostMapping("/register")
-    public ResponseEntity<String> registerBook(@RequestBody GutendexRequest request) {
+    public ResponseEntity<String> registerBook(@RequestBody GutendexRequest request) throws IOException {
         bookService.saveBookFromGutenberg(request.getGutenbergId());
+        summaryService.summarizeBook(request.getGutenbergId());
         List<SummarySceneResponse> summaryScenes = summaryService.getSummaryScenes(request.getGutenbergId());
         return ResponseEntity.ok("✅ 성공적으로 책이 등록되었습니다.");
     }
