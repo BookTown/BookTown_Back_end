@@ -3,7 +3,9 @@ package hello.booktown.controller;
 import hello.booktown.domain.Book;
 import hello.booktown.dto.BookResponse;
 import hello.booktown.dto.GutendexRequest;
+import hello.booktown.dto.SummarySceneResponse;
 import hello.booktown.service.BookService;
+import hello.booktown.service.SummaryService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import java.util.List;
 public class BookController {
 
     private final BookService bookService;
+    private final SummaryService summaryService;
 
     @Operation(summary = "책 랜덤 조회", description = "메인 화면에 위치하는 랜덤 책을 조회합니다.")
     @GetMapping("/banner")
@@ -66,6 +69,7 @@ public class BookController {
     @PostMapping("/register")
     public ResponseEntity<String> registerBook(@RequestBody GutendexRequest request) {
         bookService.saveBookFromGutenberg(request.getGutenbergId());
+        List<SummarySceneResponse> summaryScenes = summaryService.getSummaryScenes(request.getGutenbergId());
         return ResponseEntity.ok("✅ 성공적으로 책이 등록되었습니다.");
     }
 
