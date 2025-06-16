@@ -69,9 +69,15 @@ public class BookController {
     @Operation(summary = "책 등록 하기", description = "Gutendex API를 사용해 책의 정보를 불러와 DB에 저장합니다.")
     @PostMapping("/register")
     public ResponseEntity<String> registerBook(@RequestBody GutendexRequest request) throws IOException {
-        bookService.saveBookFromGutenberg(request.getGutenbergId());
-        summaryService.summarizeBook(request.getGutenbergId());
-        List<SummarySceneResponse> summaryScenes = summaryService.getSummaryScenes(request.getGutenbergId());
+        // 1. 책 저장 → DB의 책 ID 확보
+        Book savedBook = bookService.saveBookFromGutenberg(request.getGutenbergId());
+
+        // 2. 요약 생성 → 저장된 책의 ID를 사용
+        summaryService.summarizeBook(savedBook.getId());
+
+        // 3. 결과 확인용 (필요 시 생략 가능)
+        List<SummarySceneResponse> summaryScenes = summaryService.getSummaryScenes(savedBook.getId());
+
         return ResponseEntity.ok("✅ 성공적으로 책이 등록되었습니다.");
     }
 
